@@ -1,0 +1,484 @@
+# defining a network design problem
+
+Client:
+Client38
+Client39
+Client34
+Client35
+Client36
+Client37
+Client30
+Client31
+Client32
+Client33
+Client29
+Client28
+Client27
+Client26
+Client25
+Client24
+Client23
+Client22
+Client21
+Client20
+Client12
+Client13
+Client10
+Client11
+Client16
+Client17
+Client14
+Client15
+Client18
+Client19
+Client98
+Client99
+Client92
+Client93
+Client90
+Client91
+Client96
+Client97
+Client94
+Client95
+Client89
+Client88
+Client85
+Client84
+Client87
+Client86
+Client81
+Client80
+Client83
+Client82
+Client8
+Client9
+Client0
+Client1
+Client2
+Client3
+Client4
+Client5
+Client6
+Client7
+Client70
+Client71
+Client72
+Client73
+Client74
+Client75
+Client76
+Client77
+Client78
+Client79
+Client63
+Client62
+Client61
+Client60
+Client67
+Client66
+Client65
+Client64
+Client69
+Client68
+Client56
+Client57
+Client54
+Client55
+Client52
+Client53
+Client50
+Client51
+Client58
+Client59
+Client49
+Client48
+Client41
+Client40
+Client43
+Client42
+Client45
+Client44
+Client47
+Client46
+
+Server:
+Server8
+Server9
+Server4
+Server5
+Server6
+Server7
+Server0
+Server1
+Server2
+Server3
+
+Router:
+Router0
+Router1
+Router2
+Router3
+Router4
+Router5
+Router6
+Router7
+Router8
+Router9
+Router10
+Router11
+Router12
+Router13
+Router14
+Router15
+Router16
+Router17
+Router18
+Router19
+
+# content should have the following form:
+# ContentName,bitrate1, bitrate2, ..., bitrateN
+Content:
+Content0,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content1,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content2,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content3,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content4,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content5,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content6,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content7,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content8,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content9,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+
+Edge:
+Router0, Router1, 10000.0
+Router0, Router2, 10000.0
+Router1, Router2, 10000.0
+Router0, Router3, 10000.0
+Router1, Router3, 10000.0
+Router2, Router3, 10000.0
+Router2, Router4, 10000.0
+Router1, Router4, 10000.0
+Router0, Router4, 10000.0
+Router0, Router5, 10000.0
+Router2, Router5, 10000.0
+Router1, Router5, 10000.0
+Router2, Router6, 10000.0
+Router0, Router6, 10000.0
+Router1, Router6, 10000.0
+Router1, Router7, 10000.0
+Router5, Router7, 10000.0
+Router2, Router7, 10000.0
+Router1, Router8, 10000.0
+Router4, Router8, 10000.0
+Router2, Router8, 10000.0
+Router1, Router9, 10000.0
+Router7, Router9, 10000.0
+Router8, Router9, 10000.0
+Router5, Router10, 10000.0
+Router7, Router10, 10000.0
+Router1, Router10, 10000.0
+Router5, Router11, 10000.0
+Router8, Router11, 10000.0
+Router2, Router11, 10000.0
+Router2, Router12, 10000.0
+Router0, Router12, 10000.0
+Router4, Router12, 10000.0
+Router4, Router13, 10000.0
+Router9, Router13, 10000.0
+Router11, Router13, 10000.0
+Router2, Router14, 10000.0
+Router9, Router14, 10000.0
+Router1, Router14, 10000.0
+Router8, Router15, 10000.0
+Router2, Router15, 10000.0
+Router0, Router15, 10000.0
+Router7, Router16, 10000.0
+Router2, Router16, 10000.0
+Router9, Router16, 10000.0
+Router6, Router17, 10000.0
+Router0, Router17, 10000.0
+Router4, Router17, 10000.0
+Router10, Router18, 10000.0
+Router1, Router18, 10000.0
+Router2, Router18, 10000.0
+Router10, Router19, 10000.0
+Router1, Router19, 10000.0
+Router5, Router19, 10000.0
+Router13, Client0, 10000.0
+Router19, Client1, 10000.0
+Router18, Client2, 10000.0
+Router15, Client3, 10000.0
+Router3, Client4, 10000.0
+Router13, Client5, 10000.0
+Router15, Client6, 10000.0
+Router19, Client7, 10000.0
+Router3, Client8, 10000.0
+Router15, Client9, 10000.0
+Router17, Client10, 10000.0
+Router15, Client11, 10000.0
+Router18, Client12, 10000.0
+Router15, Client13, 10000.0
+Router19, Client14, 10000.0
+Router16, Client15, 10000.0
+Router16, Client16, 10000.0
+Router15, Client17, 10000.0
+Router16, Client18, 10000.0
+Router14, Client19, 10000.0
+Router16, Client20, 10000.0
+Router13, Client21, 10000.0
+Router12, Client22, 10000.0
+Router12, Client23, 10000.0
+Router16, Client24, 10000.0
+Router16, Client25, 10000.0
+Router15, Client26, 10000.0
+Router3, Client27, 10000.0
+Router17, Client28, 10000.0
+Router18, Client29, 10000.0
+Router19, Client30, 10000.0
+Router18, Client31, 10000.0
+Router19, Client32, 10000.0
+Router19, Client33, 10000.0
+Router15, Client34, 10000.0
+Router14, Client35, 10000.0
+Router17, Client36, 10000.0
+Router13, Client37, 10000.0
+Router18, Client38, 10000.0
+Router18, Client39, 10000.0
+Router19, Client40, 10000.0
+Router16, Client41, 10000.0
+Router19, Client42, 10000.0
+Router16, Client43, 10000.0
+Router15, Client44, 10000.0
+Router16, Client45, 10000.0
+Router19, Client46, 10000.0
+Router19, Client47, 10000.0
+Router18, Client48, 10000.0
+Router3, Client49, 10000.0
+Router16, Client50, 10000.0
+Router15, Client51, 10000.0
+Router16, Client52, 10000.0
+Router18, Client53, 10000.0
+Router13, Client54, 10000.0
+Router17, Client55, 10000.0
+Router12, Client56, 10000.0
+Router12, Client57, 10000.0
+Router18, Client58, 10000.0
+Router13, Client59, 10000.0
+Router18, Client60, 10000.0
+Router3, Client61, 10000.0
+Router12, Client62, 10000.0
+Router17, Client63, 10000.0
+Router3, Client64, 10000.0
+Router16, Client65, 10000.0
+Router19, Client66, 10000.0
+Router15, Client67, 10000.0
+Router17, Client68, 10000.0
+Router3, Client69, 10000.0
+Router16, Client70, 10000.0
+Router16, Client71, 10000.0
+Router16, Client72, 10000.0
+Router14, Client73, 10000.0
+Router14, Client74, 10000.0
+Router19, Client75, 10000.0
+Router3, Client76, 10000.0
+Router3, Client77, 10000.0
+Router19, Client78, 10000.0
+Router12, Client79, 10000.0
+Router12, Client80, 10000.0
+Router12, Client81, 10000.0
+Router18, Client82, 10000.0
+Router19, Client83, 10000.0
+Router3, Client84, 10000.0
+Router14, Client85, 10000.0
+Router3, Client86, 10000.0
+Router13, Client87, 10000.0
+Router12, Client88, 10000.0
+Router16, Client89, 10000.0
+Router14, Client90, 10000.0
+Router12, Client91, 10000.0
+Router15, Client92, 10000.0
+Router3, Client93, 10000.0
+Router3, Client94, 10000.0
+Router19, Client95, 10000.0
+Router12, Client96, 10000.0
+Router14, Client97, 10000.0
+Router17, Client98, 10000.0
+Router18, Client99, 10000.0
+Router1, Router0, 10000.0
+Router2, Router0, 10000.0
+Router2, Router1, 10000.0
+Router3, Router0, 10000.0
+Router3, Router1, 10000.0
+Router3, Router2, 10000.0
+Router4, Router2, 10000.0
+Router4, Router1, 10000.0
+Router4, Router0, 10000.0
+Router5, Router0, 10000.0
+Router5, Router2, 10000.0
+Router5, Router1, 10000.0
+Router6, Router2, 10000.0
+Router6, Router0, 10000.0
+Router6, Router1, 10000.0
+Router7, Router1, 10000.0
+Router7, Router5, 10000.0
+Router7, Router2, 10000.0
+Router8, Router1, 10000.0
+Router8, Router4, 10000.0
+Router8, Router2, 10000.0
+Router9, Router1, 10000.0
+Router9, Router7, 10000.0
+Router9, Router8, 10000.0
+Router10, Router5, 10000.0
+Router10, Router7, 10000.0
+Router10, Router1, 10000.0
+Router11, Router5, 10000.0
+Router11, Router8, 10000.0
+Router11, Router2, 10000.0
+Router12, Router2, 10000.0
+Router12, Router0, 10000.0
+Router12, Router4, 10000.0
+Router13, Router4, 10000.0
+Router13, Router9, 10000.0
+Router13, Router11, 10000.0
+Router14, Router2, 10000.0
+Router14, Router9, 10000.0
+Router14, Router1, 10000.0
+Router15, Router8, 10000.0
+Router15, Router2, 10000.0
+Router15, Router0, 10000.0
+Router16, Router7, 10000.0
+Router16, Router2, 10000.0
+Router16, Router9, 10000.0
+Router17, Router6, 10000.0
+Router17, Router0, 10000.0
+Router17, Router4, 10000.0
+Router18, Router10, 10000.0
+Router18, Router1, 10000.0
+Router18, Router2, 10000.0
+Router19, Router10, 10000.0
+Router19, Router1, 10000.0
+Router19, Router5, 10000.0
+Server0, Router19, 100000.0
+Server1, Router12, 100000.0
+Server2, Router17, 100000.0
+Server3, Router19, 100000.0
+Server4, Router3, 100000.0
+Server5, Router17, 100000.0
+Server6, Router18, 100000.0
+Server7, Router14, 100000.0
+Server8, Router13, 100000.0
+Server9, Router16, 100000.0
+Content0, Server0, infinity
+Content1, Server1, infinity
+Content2, Server2, infinity
+Content3, Server3, infinity
+Content4, Server4, infinity
+Content5, Server5, infinity
+Content6, Server6, infinity
+Content7, Server7, infinity
+Content8, Server8, infinity
+Content9, Server9, infinity
+
+Demand:
+Client38, Content1, 100
+Client39, Content8, 100
+Client34, Content9, 100
+Client35, Content9, 100
+Client36, Content4, 100
+Client37, Content9, 100
+Client30, Content8, 100
+Client31, Content9, 100
+Client32, Content0, 100
+Client33, Content8, 100
+Client29, Content4, 100
+Client28, Content8, 100
+Client27, Content6, 100
+Client26, Content8, 100
+Client25, Content8, 100
+Client24, Content8, 100
+Client23, Content8, 100
+Client22, Content2, 100
+Client21, Content9, 100
+Client20, Content8, 100
+Client12, Content9, 100
+Client13, Content2, 100
+Client10, Content5, 100
+Client11, Content4, 100
+Client16, Content6, 100
+Client17, Content9, 100
+Client14, Content9, 100
+Client15, Content5, 100
+Client18, Content8, 100
+Client19, Content8, 100
+Client98, Content8, 100
+Client99, Content8, 100
+Client92, Content5, 100
+Client93, Content9, 100
+Client90, Content0, 100
+Client91, Content4, 100
+Client96, Content9, 100
+Client97, Content9, 100
+Client94, Content5, 100
+Client95, Content9, 100
+Client89, Content5, 100
+Client88, Content8, 100
+Client85, Content9, 100
+Client84, Content8, 100
+Client87, Content8, 100
+Client86, Content4, 100
+Client81, Content9, 100
+Client80, Content4, 100
+Client83, Content6, 100
+Client82, Content0, 100
+Client8, Content9, 100
+Client9, Content8, 100
+Client0, Content9, 100
+Client1, Content7, 100
+Client2, Content0, 100
+Client3, Content7, 100
+Client4, Content8, 100
+Client5, Content3, 100
+Client6, Content5, 100
+Client7, Content8, 100
+Client70, Content6, 100
+Client71, Content3, 100
+Client72, Content9, 100
+Client73, Content5, 100
+Client74, Content8, 100
+Client75, Content8, 100
+Client76, Content6, 100
+Client77, Content8, 100
+Client78, Content7, 100
+Client79, Content4, 100
+Client63, Content8, 100
+Client62, Content8, 100
+Client61, Content5, 100
+Client60, Content0, 100
+Client67, Content8, 100
+Client66, Content3, 100
+Client65, Content8, 100
+Client64, Content0, 100
+Client69, Content9, 100
+Client68, Content8, 100
+Client56, Content8, 100
+Client57, Content9, 100
+Client54, Content7, 100
+Client55, Content0, 100
+Client52, Content8, 100
+Client53, Content4, 100
+Client50, Content5, 100
+Client51, Content9, 100
+Client58, Content0, 100
+Client59, Content8, 100
+Client49, Content8, 100
+Client48, Content8, 100
+Client41, Content5, 100
+Client40, Content4, 100
+Client43, Content2, 100
+Client42, Content2, 100
+Client45, Content1, 100
+Client44, Content8, 100
+Client47, Content6, 100
+Client46, Content5, 100
+

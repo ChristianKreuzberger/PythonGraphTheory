@@ -1,0 +1,44 @@
+# defining a network design problem
+
+Client:
+Client0
+Client1
+
+Server:
+Server0
+Server1
+
+
+Router:
+Router0
+Router1
+Router2
+
+
+# content should have the following form:
+# ContentName,bitrate1, bitrate2, ..., bitrateN
+Content:
+Content0,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content1,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+
+Edge:
+Router0, Router1, 10000.0
+Router0, Router2, 10000.0
+Router1, Router0, 10000.0
+Router1, Router2, 10000.0
+Router2, Router0, 10000.0
+Router2, Router1, 10000.0
+Router0, Client0, 5000.0
+Router1, Client1, 5000.0
+Server0, Router2, 5000.0
+Server1, Router2, 5000.0
+Content1, Server1, 5000.0
+Content0, Server1, 5000.0
+Content1, Server0, 5000.0
+
+
+
+Demand:
+Client0, Content1, 100
+Client1, Content0, 100
+
