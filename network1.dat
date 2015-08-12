@@ -3,16 +3,43 @@
 Client:
 Client0
 Client1
+Client2
+Client3
+Client4
+Client5
+Client6
+Client7
+Client8
+Client9
+Client10
+Client11
+Client12
+Client13
+Client14
+Client15
+Client16
+Client17
+
 
 Server:
 Server0
 Server1
-
+Server2
 
 Router:
 Router0
 Router1
 Router2
+Router3
+Router4
+Router5
+Router6
+Router7
+Router8
+Router9
+Router10
+Router11
+Router12
 
 
 # content should have the following form:
@@ -20,25 +47,95 @@ Router2
 Content:
 Content0,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
 Content1,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content2,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content3,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content4,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content5,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content6,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
+Content7,46, 89, 131, 178, 222, 263, 334, 396, 522, 595, 791, 1032, 1244, 1546, 2133, 2484, 3078, 3526, 3840, 4219
 
 Edge:
-Router0, Router1, 10000.0
-Router0, Router2, 10000.0
-Router1, Router0, 10000.0
-Router1, Router2, 10000.0
-Router2, Router0, 10000.0
-Router2, Router1, 10000.0
-Router0, Client0, 5000.0
-Router1, Client1, 5000.0
-Server0, Router2, 5000.0
-Server1, Router2, 5000.0
-Content1, Server1, 5000.0
-Content0, Server1, 5000.0
-Content1, Server0, 5000.0
-
+Router1, Client0, 5100
+Router1, Client1, 4000
+Router1, Client2, 3500
+Router2, Client3, 5700
+Router2, Client4, 3850
+Router2, Client5, 2100
+Router2, Client6, 1500
+Router3, Client7, 950
+Router3, Client8, 1500
+Router3, Client9, 2780
+Router3, Client10, 1250
+Router4, Client11, 5700
+Router4, Client12, 3700
+Router4, Client13, 1050
+Router4, Client14, 800
+Router4, Client15, 1500
+Router4, Client16, 900
+Router5, Client17, 5000
+Router1, Router2, 10000
+Router2, Router1, 10000
+Router1, Router6, 10000
+Router6, Router1, 10000
+Router2, Router6, 10000
+Router6, Router2, 10000
+Router2, Router7, 10000
+Router7, Router2, 10000
+Router6, Router7, 10000
+Router7, Router6, 10000
+Router3, Router7, 10000
+Router7, Router3, 10000
+Router6, Router10, 10000
+Router10, Router6, 10000
+Router7, Router10, 10000
+Router10, Router7, 10000
+Router7, Router8, 10000
+Router8, Router7, 10000
+Router4, Router7, 10000
+Router7, Router4, 10000
+Router4, Router8, 10000
+Router8, Router9, 10000
+Router9, Router8, 10000
+Router4, Router0, 10000
+Router0, Router4, 10000
+Router0, Router9, 10000
+Router9, Router0, 10000
+Router5, Router9, 10000
+Router9, Router5, 10000
+Router9, Router12, 10000
+Router12, Router9, 10000
+Router6, Router11, 10000
+Router11, Router6, 10000
+Server0, Router11, 10000
+Server1, Router10, 10000
+Server2, Router12, 10000
+Content0, Server0, 100000
+Content1, Server1, 100000
+Content2, Server2, 100000
+Content3, Server0, 100000
+Content4, Server1, 100000
+Content5, Server2, 100000
+Content6, Server0, 100000
+Content7, Server1, 100000
 
 
 Demand:
-Client0, Content1, 100
-Client1, Content0, 100
+Client0, Content0, 100
+Client1, Content1, 100
+Client2, Content2, 100
+Client3, Content3, 100
+Client4, Content4, 100
+Client5, Content5, 100
+Client6, Content6, 100
+Client7, Content7, 100
+Client8, Content0, 100
+Client9, Content1, 100
+Client10, Content2, 100
+Client11, Content3, 100
+Client12, Content0, 100
+Client13, Content1, 100
+Client14, Content0, 100
+Client15, Content1, 100
+Client16, Content0, 100
+Client17, Content0, 100
 

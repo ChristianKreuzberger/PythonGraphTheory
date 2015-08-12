@@ -37,15 +37,19 @@ def edgeWeight(originalCapacity, currentCapacity, currentDemand):
         print "link dead, remaining capacity = ", currentCapacity, " demand=", currentDemand
         return 10000 # very high weight, do not use this link
     if currentDemand > currentCapacity:
-        print "not enough cap"
+        print "not enough cap, but probably still satisfiable"
         return 100000 # cant satisfy this either
 
     usedCapacity = originalCapacity - currentCapacity
-    if usedCapacity > originalCapacity * 0.8: # if more than 80 % o the capacity is used, we must avoid this link
+
+    if usedCapacity > originalCapacity * 0.9: # this is really not optimal anymore, so we allow detours of length 8 now
+        return 8
+
+    if usedCapacity > originalCapacity * 0.8: # if more than 80 % o the capacity is used, we should try to find alternative links with 4 times the length
         return 4
 
-    if usedCapacity > originalCapacity * 0.6: # if more than 60 % of the capacity is used, we should try to avoid this link
-        return 2 # try to avoid this link
+    if usedCapacity > originalCapacity * 0.6: # if more than 60 % of the capacity is used, we should try to find alternative links with twice the length
+        return 2
 
     return 1
 
@@ -92,15 +96,15 @@ clientCapacity = 10000.0 # 10 mbit
 routerCapacity = 100000.0 # 100 Mbit
 #print "Generating random network..."
 
-network = RandomNetwork.read_from_file('network.dat')
+network = RandomNetwork.read_from_file('network1.dat')
 
 # network = RandomNetwork.generate_random_network(numRouters, numClients, numServers, routerCapacity, clientCapacity, serverCapacity)
 
 #exportNetwork(network)
 
 g = network["graph"]
-layout = g.layout("kk")
-plot(g, layout = layout)
+#layout = g.layout("kk")
+#plot(g, layout = layout)
 
 print network["clients"]
 clients = network["clients"]
@@ -125,7 +129,7 @@ content = network["content"]
 def findPathForDemand(graph, client, server, demandValue, edgeWeightFunction=edgeWeight):
     # find edges with no demand remaining and delete them
     for edge in graph.es:
-        if edge["capacity"] < demandValue:
+        if edge["capacity"] <  demandValue:
             #print "capacity too low,removing...", edge.index, edge
             graph.delete_edges(edge.index)
 
@@ -135,13 +139,15 @@ def findPathForDemand(graph, client, server, demandValue, edgeWeightFunction=edg
     # todo: output="epath"
     shortestPaths = []
     try:
-        shortestPaths = graph.get_shortest_paths(v=server, to=client, weights=weights)
+        shortestPaths = graph.get_all_shortest_paths(v=server, to=client, weights=weights)
     except:
         return False
 
-    if len(shortestPaths[0]) == 0:
+    if len(shortestPaths) == 0:
         return False
 
+    if len(shortestPaths) != 1:
+        print "Len(shortestpaths)=", len(shortestPaths), " TODO: split the traffic among those paths!"
 
     for path in shortestPaths:
         lastNodeId = -1
@@ -150,9 +156,10 @@ def findPathForDemand(graph, client, server, demandValue, edgeWeightFunction=edg
                 #print "Edge(" + str(lastNodeId) + "," + str(nodeId) + ")"
                 edgeId =  g.get_eid(lastNodeId, nodeId)
                 #graph.es[edgeId]["color"] = "red"
-                graph.es[edgeId]["capacity"] -= demandValue
+                graph.es[edgeId]["capacity"] -= demandValue / (1.0 * len(shortestPaths))
 
             lastNodeId = nodeId
+
 
     return True
 
@@ -196,6 +203,7 @@ sumBitrates = 0.0
 max = 0
 min = 1000000
 
+# calculate sum, avg, min, max
 for demand in demands:
     #print demand
     sumBitrates += demand["value"]
@@ -203,9 +211,23 @@ for demand in demands:
         min = demand["value"]
     if demand["value"] > max:
         max = demand["value"]
+avg = (sumBitrates)/len(demands)
+
+# calculate differences/deviation
+deviation = 0.0
+difference = 0.0
+for demand in demands:
+    difference += abs(avg - demand["value"])
+    deviation  += pow(avg - demand["value"], 2)
+
+
+difference = difference / len(demands)
+deviation = math.sqrt(1.0/(len(demands) - 1.0) * deviation)
 
 print "Sum of all flows =", sumBitrates
 print "Avg(Flow)=", (sumBitrates)/len(demands)
+print "SD(Flow)=", deviation
+print "AvgDiff=", difference
 print "Max(Flow)=", max
 print "Min(Flow)=", min
 
