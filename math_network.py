@@ -20,3 +20,6 @@ def c_log_sum_flows(flows):
 def c_neg_log_sum_flows(flows):
     return -c_log_sum_flows(flows)
 
+def c_grad_neg_log_sum_flows(flows):
+    return [-1/xk for xk in flows]
+

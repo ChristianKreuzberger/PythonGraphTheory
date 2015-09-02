@@ -7,6 +7,7 @@ __license__ = 'Not decided yet'
 __maintainer__ = 'Christian Kreuzberger'
 __status__= 'Development'
 
+# TODO: Figure out a proper license + license boiler plate
 
 from igraph import *
 import random
@@ -250,7 +251,7 @@ class Network:
 
 
     def export_demand_paths_matrix(self):
-        """ export path-demand incidence matrix A with a_ji = 1 if demand i uses edge j
+        """ export shortest-path-demand incidence matrix A with a_ji = 1 if demand i uses edge j
         :rtype: np.array
         :return: path-demand incidence matrix A
         """
@@ -280,3 +281,104 @@ class Network:
         # need to transpose this
         return cols.transpose()
 
+    def export_edge_capacity(self):
+        """ Export edge capacity in the same order of edges as stored in self.graph.es
+        :return: an array with the edge capacity
+        """
+        capacity = []
+
+        for e in self.graph.es:
+            capacity.append(e['capacity'])
+        return capacity
+
+
+    def calculate_fixed_single_path_blocking_min_flows(self):
+        """ A heuristik for calculating fixed single path flows - minimum flows
+        :return: an array with the resulting flows, in the same order as Network.demands
+        """
+        # get shortest-path-demand incidence matrix
+        A = self.export_demand_paths_matrix()
+        C = self.export_edge_capacity()
+        numEdges = self.graph.ecount()
+
+        flows = np.zeros(len(self.demands))
+
+        # go over all demands
+        for i in range(0,len(self.demands)):
+            # determine the average path value
+            val = float("inf")
+            for j in range(0,numEdges):
+                # check if this demand is flowing over this link
+                if A[j,i] == 1:
+                    avg = C[j] / sum(A[j,:])
+                    if avg < val:
+                        val = avg
+                    # end if
+                # end if flowing over this link
+            # end for all edges
+            flows[i] = val
+        # end for all demands
+
+        return flows
+
+
+
+    def calculate_fixed_single_path_blocking_maxmin_flows(self):
+        """ A heuristik for calculating fixed single path flows - minimum flows
+        :return: an array with the resulting flows, in the same order as Network.demands
+        """
+        # get shortest-path-demand incidence matrix
+        A = self.export_demand_paths_matrix()
+        C = self.export_edge_capacity()
+        numEdges = self.graph.ecount()
+        numDemands = len(self.demands)
+
+        totalflows = np.zeros(len(self.demands))
+
+        activeDemands = np.ones(len(self.demands)) # one = active, zero = inactive
+
+        # while there are still demands that can be satisfied somehow
+        while activeDemands.max() > 0:
+            # determine current possible flows
+            curflows = np.zeros(numDemands)
+            # go over all demands
+            for i in range(0,numDemands):
+                if activeDemands[i] > 0:
+                    # determine the average path value
+                    val = float("inf")
+                    for j in range(0,numEdges):
+                        # check if this demand is flowing over this link
+                        if A[j,i] == 1:
+                            avg = C[j] / sum(A[j,:])
+                            if avg < val:
+                                val = avg
+                            # end if
+                        # end if flowing over this link
+                    # end for all edges
+                    curflows[i] = val
+                # end if demand is active
+            # end for all demands
+
+            # calculate residual bandwidth per edge
+            res = A.dot(curflows) - C
+
+            omega = []
+
+            # check all edges, update edge capacity and mark demands as inactive
+            for j in range(0,numEdges):
+                if res[j] >= -0.001: # >= 0
+                    res[j] = 0
+                    # edge j has no free capacity ==> need to find all demands
+                    for i in range(0,numDemands):
+                        if A[j,i] == 1:
+                            activeDemands[i] = 0
+                        # end if
+                    # end for
+                # end if
+            # update edge capacity to residuals
+            C = -res
+            # update flows
+            totalflows = totalflows + curflows
+        # end while
+
+        return totalflows
