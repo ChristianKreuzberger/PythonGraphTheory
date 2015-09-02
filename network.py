@@ -159,13 +159,13 @@ class Network:
             self.routers[routerName] = v.index
             k += 1
 
-        # give all routers capacity
+        # give all links belonging to routers (so essentially all edges for now) the same capacity
         self.graph.es["capacity"] = routerDefaultCapacity
 
-        # get min degree
+        # figure out the minimum degree of the nodes in the graph
         minDegree = min(self.graph.degree())
-        # get all nodes with mindegree
 
+        # get all nodes with minimum degree - these will be used as clients
         nodesWithMinDegree = []
 
         for v in self.graph.vs:
@@ -173,7 +173,7 @@ class Network:
                 nodesWithMinDegree.append(v)
 
 
-        # add clients
+        # add clients to nodes that have minimum degree
         for k in range(0, numClients):
             # create client node
             clientName = "Client" + str(k)
@@ -188,7 +188,7 @@ class Network:
 
             self.clients[clientName] = vertice_id
 
-        # add servers
+        # add servers also to nodes that have minimum degree
         for k in range(0, numServers):
             # create client node
             serverName = "Server" + str(k)
@@ -203,6 +203,7 @@ class Network:
 
             self.servers[serverName] = vertice_id
 
+        # TODO: Move coloring of nodes into another method
         for v in self.graph.vs:
             if "Router" in v["name"]:
                 v["color"] = "green"
@@ -211,17 +212,19 @@ class Network:
             elif "Server" in v["name"]:
                 v["color"] = "blue"
 
-        # convert into directed graph
-        self.graph = self.graph.as_directed() # TODO: Is this still needed?
-        # remove edges from network to the server
+        # convert into directed graph (means: each undirected edge becomes two directed edges)
+        self.graph = self.graph.as_directed() # TODO: Check if this is still needed?
+
+        # remove edges from the network to the server
+        # the reason for this is simple: we do not want data to flow TO the server
         for serverName in self.servers:
             neighbours = self.graph.incident(serverName, mode=IN)
 
             for v in neighbours:
                 self.graph.delete_edges(v)
-                # g.delete_edges([g.vs.select(v), g.vs.select(serverName)])
 
         # remove edges from client to the network
+        # the reason for this is simple: we do not want data to flow from the client to the network
         for clientName in self.clients:
             neighbours = self.graph.incident(clientName, mode=OUT)
             for v in neighbours:
