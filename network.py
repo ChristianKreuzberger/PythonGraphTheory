@@ -236,6 +236,17 @@ class Network:
         self.graph.vs["label"] = self.graph.vs["name"]
 
 
+        # create demands
+        for clientName in self.clients:
+            # draw a random server
+            k = random.randint(0, len(self.servers)-1)
+
+            print "Selected server ", k
+
+            self.demands[clientName] = {'from': clientName, 'to': self.servers.keys()[k]}
+            #   self.demands[clientvalue] = {'from': clientvalue, 'to': demandline[1].strip()}
+
+
         print "Created", len(self.demands), "demands,", self.graph.vcount(), "nodes and", self.graph.ecount(), "edges"
 
 
@@ -303,6 +314,12 @@ class Network:
 
         flows = np.zeros(len(self.demands))
 
+        sumAj = []
+
+        # pre calculate sum (A[j,:]) for all j
+        for j in range(0,numEdges):
+            sumAj.append(sum(A[j,:]))
+
         # go over all demands
         for i in range(0,len(self.demands)):
             # determine the average path value
@@ -310,7 +327,7 @@ class Network:
             for j in range(0,numEdges):
                 # check if this demand is flowing over this link
                 if A[j,i] == 1:
-                    avg = C[j] / sum(A[j,:])
+                    avg = C[j] / sumAj[j]
                     if avg < val:
                         val = avg
                     # end if
@@ -327,6 +344,12 @@ class Network:
         """ A heuristik for calculating fixed single path flows - minimum flows
         :return: an array with the resulting flows, in the same order as Network.demands
         """
+
+        if len(self.demands) == 0:
+            print"Error: no demands available"
+            return []
+
+
         # get shortest-path-demand incidence matrix
         A = self.export_demand_paths_matrix()
         C = self.export_edge_capacity()
@@ -337,8 +360,16 @@ class Network:
 
         activeDemands = np.ones(len(self.demands)) # one = active, zero = inactive
 
+        sumAj = []
+
+        # pre calculate sum (A[j,:]) for all j
+        for j in range(0,numEdges):
+            sumAj.append(sum(A[j,:]))
+
+
         # while there are still demands that can be satisfied somehow
         while activeDemands.max() > 0:
+            print "active demands: ", sum(activeDemands)
             # determine current possible flows
             curflows = np.zeros(numDemands)
             # go over all demands
@@ -349,7 +380,7 @@ class Network:
                     for j in range(0,numEdges):
                         # check if this demand is flowing over this link
                         if A[j,i] == 1:
-                            avg = C[j] / sum(A[j,:])
+                            avg = C[j] / sumAj[j]
                             if avg < val:
                                 val = avg
                             # end if
@@ -359,10 +390,11 @@ class Network:
                 # end if demand is active
             # end for all demands
 
+            print "Determining residuals"
             # calculate residual bandwidth per edge
             res = A.dot(curflows) - C
 
-            omega = []
+            print "Determining which demands need to be deactivated"
 
             # check all edges, update edge capacity and mark demands as inactive
             for j in range(0,numEdges):
