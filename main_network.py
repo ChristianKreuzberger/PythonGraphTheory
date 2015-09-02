@@ -2,8 +2,6 @@ __author__ = 'ckreuz'
 from network import *
 from math_network import *
 from nonlinopt_network import *
-import scipy
-import scipy.optimize
 import time
 
 
@@ -12,38 +10,37 @@ from numpy.linalg import inv
 
 n = Network()
 
-n.import_network("network.dat")
-
-cols = []
-
-capacity = {}
-
-for e in n.graph.es:
-    capacity[e.index] = e['capacity']
-
+#n.import_network("network.dat")
+n.create_random_network(500, 5000, 50)
 
 num_edges = n.graph.ecount()
 num_demands = len(n.demands)
 
+
+print"Determining M matrix"
+
 M = n.export_demand_paths_matrix()
 C = n.export_edge_capacity()
 
+print "Determining some example flows..."
+
 flows1 = n.calculate_fixed_single_path_blocking_min_flows()
-flows2 = n.calculate_fixed_single_path_blocking_maxmin_flows()
+
+#print"Determining another set of example flows..."
+#flows2 = n.calculate_fixed_single_path_blocking_maxmin_flows()
 
 
 print(c_log_sum_flows(flows1))
 print(c_sum_flows(flows1))
 
-res = M.dot(flows1) - C
-print("Residuals=", max(res))
-
-print(c_log_sum_flows(flows2))
-print(c_sum_flows(flows2))
 
 
-res = M.dot(flows2) - C
-print("Residuals=", max(res))
+#print(c_log_sum_flows(flows2))
+#print(c_sum_flows(flows2))
+
+
+#res = M.dot(flows2) - C
+#print("Residuals=", max(res))
 
 
 start = time.time()
@@ -51,16 +48,15 @@ start = time.time()
 flows3 = nlp_optimize_network(M,C,flows1,c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=gradient_based_line_search)
 stop = time.time()
 
-print "gradient_based_line_search Took ", stop - start, " seconds!"
+print "!!!!!!!! gradient_based_line_search Took ", stop - start, " seconds!"
 
-exit()
 
 start = time.time()
 # gradient_based_line_search linear_decreasing_line_search
 flows3 = nlp_optimize_network(M,C,flows1,c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=smart_linear_decreasing_line_search)
 stop = time.time()
 
-print "smart_linear_decreasing_line_search Took ", stop - start, " seconds!"
+print "!!!!!!!! smart_linear_decreasing_line_search Took ", stop - start, " seconds!"
 exit()
 
 
