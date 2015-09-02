@@ -1,7 +1,16 @@
-__author__ = 'ckreuz'
+#!/usr/bin/env python
+"""Provides a library for importing and exporting networks and demands
+"""
+__author__ = 'Christian Kreuzberger'
+__email__ = 'christian.kreuzberger@itec.aau.at'
+__license__ = 'Not decided yet'
+__maintainer__ = 'Christian Kreuzberger'
+__status__= 'Development'
+
 
 from igraph import *
 import random
+import numpy as np
 
 
 class Network:
@@ -17,12 +26,7 @@ class Network:
         """ Initialize the bi-directional graph
         :return:
         """
-        self.graph = Graph().as_directed()  # create a directed graph
-        self.clients = {}
-        self.servers = {}
-        self.routers = {}
-        self.content = {}
-        self.demands = {}
+        self.clear()
 
     def clear(self):
         """ Clear the graph, demands, etc...
@@ -50,7 +54,7 @@ class Network:
         :return: True on success, else False
         """
 
-        # open file for read
+        # open file for reading the network
         fp = open(filename, "r")
         print "Opening", filename, "and reading network and demands ..."
 
@@ -60,23 +64,18 @@ class Network:
         for line in fp:
             line = line.strip()
             if line == "Client:":
-                # do something
                 print "Processing client"
                 current_status = 0
             elif line == "Server:":
-                # do something
                 print "processing server"
                 current_status = 1
             elif line == "Router:":
-                # do somethingl
                 print "processing router"
                 current_status = 2
             elif line == "Content:":
-                # do something
                 print "processing content"
                 current_status = 3
             elif line == "Edge:":
-                # do something
                 print "processing edge"
                 current_status = 4
             elif line == "Demand:":
@@ -234,3 +233,47 @@ class Network:
 
 
         print "Created", len(self.demands), "demands,", self.graph.vcount(), "nodes and", self.graph.ecount(), "edges"
+
+
+    def shortest_path(self, fromNodeName, toNodeName):
+        """ calls igraph.get_shortest_paths with the parameters v=fromNodeName and to=toNodeName
+        :param fromNodeName: the originating node
+        :param toNodeName:  the destination node
+        :rtype: list[list[int]]
+        :return: a list of shortest paths (can be more than one), consisting of edge IDs
+        """
+        shortestPaths = self.graph.get_shortest_paths(v=fromNodeName, to=toNodeName)
+        return shortestPaths
+
+
+    def export_demand_paths_matrix(self):
+        """ export path-demand incidence matrix A with a_ji = 1 if demand i uses edge j
+        :rtype: np.array
+        :return: path-demand incidence matrix A
+        """
+        num_edges = self.graph.ecount()
+        cols = []
+
+        # iterate over each client/demand
+        for client in self.demands:
+            # the column contains all zeros initially
+            column = np.zeros(num_edges)
+            d = self.demands[client]
+            # calculate shortest path from the server to the client
+            shortest_paths = self.shortest_path(d['to'], d['from'])
+            # for each edge in this path, set the respective entry in the column to 1
+            if len(shortest_paths) > 0:
+                p = shortest_paths[0]
+                for eid in p:
+                    column[eid] = 1
+            else:
+                print "ERROR: Could not find path for demand ", d
+            # end if
+
+            # append this column to the rest of the matrix
+            cols.append(column)
+        # convert the list to a numpy array
+        cols = np.array(cols)
+        # need to transpose this
+        return cols.transpose()
+
