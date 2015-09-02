@@ -69,7 +69,7 @@ def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps):
     #plotmu(xk,r,f,gradf,A,C,mu_min, mu_max,eps)
 
     # perform newton search to find f'(mu) = 0
-    newmu = mu = mu_min + 1
+    newmu = mu = mu_min
     print "approaching optimum with newton, starting at mu=", mu
     # this is easy now, just do a newton search, starting at mu=mu_min
 
@@ -153,7 +153,7 @@ def linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
             print "Infeasible for mu=",mu,"(mu_max=",mu_max,")"
 
         # end if
-        mu = mu - diff/1000.0
+        mu = mu - diff/100.0
     # end while
 
     mu = low_mu
@@ -191,10 +191,6 @@ def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,ep
     # end while
 
     mu = low_mu
-    while not is_feasible(A,C, xk + mu * r, eps):
-        mu = mu / 2.0
-        print ("not feasible!")
-
 
     return mu
 

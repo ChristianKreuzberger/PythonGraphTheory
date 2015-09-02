@@ -48,11 +48,22 @@ print("Residuals=", max(res))
 
 start = time.time()
 # gradient_based_line_search linear_decreasing_line_search
+flows3 = nlp_optimize_network(M,C,flows1,c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=gradient_based_line_search)
+stop = time.time()
+
+print "gradient_based_line_search Took ", stop - start, " seconds!"
+
+exit()
+
+start = time.time()
+# gradient_based_line_search linear_decreasing_line_search
 flows3 = nlp_optimize_network(M,C,flows1,c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=smart_linear_decreasing_line_search)
 stop = time.time()
 
-print "Took ", stop - start, " seconds!"
+print "smart_linear_decreasing_line_search Took ", stop - start, " seconds!"
 exit()
+
+
 
 
 res = M.dot(flows3) - C
