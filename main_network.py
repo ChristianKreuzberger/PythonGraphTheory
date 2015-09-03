@@ -11,7 +11,7 @@ from numpy.linalg import inv
 n = Network()
 
 #n.import_network("network.dat")
-n.create_random_network(500, 5000, 50)
+n.create_random_network(100, 500, 25)
 
 num_edges = n.graph.ecount()
 num_demands = len(n.demands)
@@ -21,6 +21,13 @@ print"Determining M matrix"
 
 M = n.export_demand_paths_matrix()
 C = n.export_edge_capacity()
+
+
+#print np_array_to_matlab(M)
+#print np_array_to_matlab(C)
+
+
+#exit()
 
 print "Determining some example flows..."
 
