@@ -360,15 +360,16 @@ class Network:
 
         activeDemands = np.ones(len(self.demands)) # one = active, zero = inactive
 
-        sumAj = []
-
-        # pre calculate sum (A[j,:]) for all j
-        for j in range(0,numEdges):
-            sumAj.append(sum(A[j,:]))
-
 
         # while there are still demands that can be satisfied somehow
         while activeDemands.max() > 0:
+
+            sumAj = []
+
+            # pre calculate sum (A[j,:]) for all j
+            for j in range(0,numEdges):
+                sumAj.append(sum(A[j,:]))
+
             print "active demands: ", sum(activeDemands)
             # determine current possible flows
             curflows = np.zeros(numDemands)
@@ -386,29 +387,40 @@ class Network:
                             # end if
                         # end if flowing over this link
                     # end for all edges
+                    if val == float("inf"):
+                        print "Infinity occured"
+                        exit()
                     curflows[i] = val
                 # end if demand is active
             # end for all demands
 
             print "Determining residuals"
             # calculate residual bandwidth per edge
-            res = A.dot(curflows) - C
+            res = C - A.dot(curflows)
 
             print "Determining which demands need to be deactivated"
 
+            omega = {}
+
             # check all edges, update edge capacity and mark demands as inactive
             for j in range(0,numEdges):
-                if res[j] >= -0.001: # >= 0
+                cntActive=0
+                if res[j] <= 0.001: # == 0
                     res[j] = 0
                     # edge j has no free capacity ==> need to find all demands
                     for i in range(0,numDemands):
                         if A[j,i] == 1:
-                            activeDemands[i] = 0
+                            omega[i] = 1
                         # end if
                     # end for
                 # end if
+            # disable all demands in omega
+            for i in omega.keys():
+                for j in range(0,numEdges):
+                    A[j,i] = 0
+                activeDemands[i] = 0
             # update edge capacity to residuals
-            C = -res
+            C = res
             # update flows
             totalflows = totalflows + curflows
         # end while

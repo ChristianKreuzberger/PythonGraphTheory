@@ -69,16 +69,18 @@ def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps):
     #plotmu(xk,r,f,gradf,A,C,mu_min, mu_max,eps)
 
     # perform newton search to find f'(mu) = 0
-    newmu = mu = mu_min
+    newmu = mu = mu_max / 2.0
     print "approaching optimum with newton, starting at mu=", mu
     # this is easy now, just do a newton search, starting at mu=mu_min
 
-    while mu < mu_max:
+    while lin.norm(gradmu(xk,r,mu)) < eps:
         newmu = mu + secondorder(xk,r,mu)
-        #print "newmu=", newmu
+
         if abs(newmu - mu) < 0.0001:
             break
         mu = newmu
+        #if mu > mu_max:
+
     # end while
 
     print"mu = ", newmu
@@ -111,16 +113,16 @@ def plotmu(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
                 low_mu = mu
             # end if
         else:
-            print "Infeasible for mu=",mu,"(mu_max=",mu_max,")"
+            print "Infeasible for mu=",mu,"(min(xk + mu * r)= ",min(xk + mu * r) , ",mu_max=",mu_max,")"
 
         # end if
         mu = mu - diff/1000.0
     # end while
 
     mu = low_mu
-    while not is_feasible(A,C, xk + mu * r, eps):
+    while not is_feasible(A,C, xk + mu * r, eps) and mu > eps:
         mu = mu / 2.0
-        print ("not feasible!")
+        print mu, "not feasible!"
 
     # plot values
     plt.figure(1)
@@ -219,6 +221,8 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
 
     history = []
+    AT = A.transpose()
+
 
     xk = x0
     P = None # projection matrix
@@ -237,6 +241,7 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             # end if
         # end for
 
+        # TODO: Matrix P is not always calculable Inv(A^ A) is not doable!!!
         # check if active constraints differ from last iteration
         if activeConstraints != lastActiveConstraints:
             print "We have",len(activeConstraints), "active constraints"
@@ -244,13 +249,23 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             M = A[activeConstraints,:]
             MT = M
             M = M.transpose()
-
-            # calculate projection matrix
-            P = np.identity(n) - M.dot(lin.inv(MT.dot(M))).dot(MT)
+            try:
+                # calculate projection matrix
+                print ""
+                P = np.identity(n) - M.dot(lin.inv(MT.dot(M))).dot(MT)
+            except:
+                print "Error..."
+                print M
+                print "Activeconstraints=", activeConstraints
+                print "M.size=", M.size
+                print "Rank(M)=", lin.matrix_rank(M)
+                raise
         # end if
 
         # store currently active constraints for next iteration
         lastActiveConstraints = activeConstraints
+
+        gradbefore = gradf(xk)
 
         # calculate projected descent vector
         r = -P.dot(gradf(xk))
@@ -262,9 +277,10 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
         # normalize r
         # r = r/lin.norm(r)
+        mu_max = get_max_feasible_mu(A,C,xk,r,eps)
 
         # TODO: perform line search
-        mu = line_search(xk, r, f, gradf, A, C, eps, get_max_feasible_mu(A,C,xk,r,eps), eps)
+        mu = line_search(xk, r, f, gradf, A, C, eps, mu_max, eps)
 
 
         #mu1 = gradient_based_line_search(xk, r, f, gradf, A, C, eps, get_max_feasible_mu(A,C,xk,r,eps), eps)
@@ -275,9 +291,20 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         #print "vals=", f(xk + mu1 * r), "; ", f(xk + mu2 * r), "==>", f(xk + mu1 * r) < f(xk + mu2 * r)
 
 
-
+        oldxk = xk
         # modify xk, and check the new objective
         xk = xk + mu * r
+
+        gradafter = gradf(xk)
+
+        print "norm(before)=", lin.norm(gradbefore), "; norm(after)=", lin.norm(gradafter)
+
+        if min(xk) < eps:
+            print "Found a bad xk in step ", k, ", this could lead to a crash..."
+            print "mu=", mu, ", mu_max=", mu_max
+            print xk
+            plotmu(oldxk, r, f, gradf, A, C, eps, mu_max, eps)
+
         obj = f(xk)
         history.append(obj)
         print("Objective=",obj)
