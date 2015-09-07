@@ -29,8 +29,8 @@ def is_feasible(A,C,x,eps):
 
 
 def get_max_feasible_mu(A,C,x,r, eps):
-    mu_max = -max([ (x[i]/r[i] if r[i] < 0 else -float("inf") ) for i in range(0,len(x))])
-    mu_max = mu_max * (1.0 - eps)
+    mu_max = -max([ (x[i]/r[i] if r[i] < -eps else -float("inf") ) for i in range(0,len(x))])
+    mu_max = mu_max * (1.0 - eps) # just to be sure
 
     impact = A.dot(r)
 
@@ -42,28 +42,47 @@ def get_max_feasible_mu(A,C,x,r, eps):
                 mu = (-val)/impact[j]
                 if mu > eps and mu < mu_max: # we only want positive mu
                     mu_max = mu
-    return mu_max
+    return min(mu_max,float("10e10"))
 
 
 
 def gradmu(xk,r,mu):
     return -sum([ r[i] / (xk[i] + mu * r[i]) for i in range(0,len(xk)) ])
 
+def numgradmu(xk,r,mu,eps=float("10e-13")):
+    print "mu=", mu
+    lower = -sum(([ math.log(xk[i] + (mu-eps) * r[i]) for i in range(0,len(xk)) ]))
+    upper = -sum(([ math.log(xk[i] + (mu+eps) * r[i]) for i in range(0,len(xk)) ]))
+    return (upper-lower)/(2.0 * eps)
+
+
 def secondorder(xk,r,mu):
     upper = gradmu(xk,r,mu)
     lower = -sum([ math.pow(r[i],2) / math.pow(xk[i] + mu * r[i],2) for i in range(0,len(xk)) ])
     return upper/lower
 
-def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps):
+
+
+def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps, fgradmu=gradmu):
     # check gradmu(0) * gradmu(mu_max)
-    if gradmu(xk,r,mu_min) * gradmu(xk,r,mu_max) < 0:
+
+    grad_mumin = fgradmu(xk,r,mu_min)
+    grad_mumax = fgradmu(xk,r,mu_max)
+
+    print "grad_mumin=", grad_mumin, ", grad_mumax=", grad_mumax
+
+    if abs(grad_mumax) < eps:
+        print "Optimum at mu_max (condition 1 met)"
+        return mu_max
+
+    if grad_mumin * grad_mumax < 0:
         print "There exists a global minimum somewhere here..."
     else:
         if f(xk + mu_max * r) > f(xk + mu_min * r):
-            print "Optimum at mu_min"
+            print "Optimum at mu_min (condition 2 met)"
             return mu_min
         else:
-            print "Optimum at mu_max"
+            print "Optimum at mu_max (condition 3 met)"
             return mu_max
 
     #plotmu(xk,r,f,gradf,A,C,mu_min, mu_max,eps)
@@ -73,12 +92,31 @@ def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps):
     print "approaching optimum with newton, starting at mu=", mu
     # this is easy now, just do a newton search, starting at mu=mu_min
 
-    while lin.norm(gradmu(xk,r,mu)) < eps:
+    lastgradmu = 1000
+    curgradmu = 1000
+
+    while True:
         newmu = mu + secondorder(xk,r,mu)
 
-        if abs(newmu - mu) < 0.0001:
-            break
+        if newmu < 0:
+            newmu = eps
+
+        while newmu > mu_max:
+            print "Repairing newton solution..."
+            diff = newmu - mu
+            newmu -= diff/2
+
+
+        newgradmu = fgradmu(xk,r,newmu)
+
+        print "newmu=", newmu, "newgradmu=", newgradmu
+
+
         mu = newmu
+
+        if abs(curgradmu - newgradmu) < eps:
+            break
+        curgradmu = newgradmu
         #if mu > mu_max:
 
     # end while
@@ -88,7 +126,7 @@ def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps):
 
 
 def plotmu(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
-    mu = mu_max
+    mu = mu_min
 
     diff = float(mu_max - mu_min)
 
@@ -97,7 +135,12 @@ def plotmu(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
     values = []
     mus = []
     gradvals = []
-    while mu > mu_min:
+    numgradvals = []
+    last_val = -1
+
+    numgradvals.append(0)
+
+    while mu < mu_max:
         if min(xk + mu *r) > eps: # xk + mu * r > 0 must hold for logarithm
             cur_val = f(xk + mu * r)
 
@@ -112,17 +155,24 @@ def plotmu(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
                 low_val = cur_val
                 low_mu = mu
             # end if
+
+            if last_val != -1:
+                numgradvalue = (cur_val - last_val)/(diff/1000.0)
+                numgradvals.append(numgradvalue)
+            # end if
+            last_val = cur_val
         else:
             print "Infeasible for mu=",mu,"(min(xk + mu * r)= ",min(xk + mu * r) , ",mu_max=",mu_max,")"
 
         # end if
-        mu = mu - diff/1000.0
+        mu = mu + diff/1000.0
     # end while
 
-    mu = low_mu
-    while not is_feasible(A,C, xk + mu * r, eps) and mu > eps:
-        mu = mu / 2.0
-        print mu, "not feasible!"
+
+    print mus
+    print values
+    print gradvals
+    print numgradvals
 
     # plot values
     plt.figure(1)
@@ -130,12 +180,85 @@ def plotmu(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
     plt.plot(mus,values,'r')
 
     plt.subplot(212)
-    plt.plot(mus,gradvals, 'b')
+    plt.plot(mus,gradvals, 'b', mus, numgradvals, 'g')
+
     plt.show()
 
     return mu
 
-def linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
+
+def binary_line_search_gradient(xk,r,f,gradf,A,C,mu_min, mu_max,eps, fgradmu=gradmu):
+    low_val = float("inf")
+
+    left_mu = mu_min
+    right_mu = mu_max * (1 - eps)
+
+    left_val = gradmu(xk, r, left_mu)
+    right_val = gradmu(xk, r, right_mu)
+
+    if left_val * right_val > eps:
+        return mu_max
+
+    if left_val < 0:
+        k = 1
+        while k < 25:
+            #print "k=", k, ", left_mu=", left_mu, ", right_mu=", right_mu
+            #left_val = f(xk + left_mu * r)
+            #right_val = f(xk + right_mu * r)
+            left_val = gradmu(xk, r, left_mu)
+            right_val = gradmu(xk, r, right_mu)
+
+            if left_val < 0:
+                left_mu += (right_mu - left_mu) / 2.0
+
+            if right_val > 0:
+                right_mu -= (right_mu - left_mu) / 2.0
+
+            k+=1
+
+        return (right_mu + left_mu)/2.0
+    else:
+        k = 1
+        while k < 25:
+            #print "k=", k, ", left_mu=", left_mu, ", right_mu=", right_mu
+            #left_val = f(xk + left_mu * r)
+            #right_val = f(xk + right_mu * r)
+            left_val = gradmu(xk, r, left_mu)
+            right_val = gradmu(xk, r, right_mu)
+
+            if left_val > 0:
+                left_mu += (right_mu - left_mu) / 2.0
+
+            if right_val < 0:
+                right_mu -= (right_mu - left_mu) / 2.0
+
+            k+=1
+
+        return (right_mu + left_mu)/2.0
+
+
+def binary_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps, fgradmu=gradmu):
+    low_val = float("inf")
+
+    left_mu = mu_min
+    right_mu = mu_max * (1 - eps)
+    k = 1
+    while k < 25:
+        #print "k=", k, ", left_mu=", left_mu, ", right_mu=", right_mu
+        left_val = f(xk + left_mu * r)
+        right_val = f(xk + right_mu * r)
+        # find out which one is lower
+        if left_val < right_val:
+            # continue with left_val
+            right_mu -= (right_mu - left_mu) / 2.0
+        else:
+            # continue with right_val
+            left_mu += (right_mu - left_mu) / 2.0
+        k+=1
+
+    return (right_mu + left_mu)/2.0
+
+def linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,eps, fgradmu = gradmu):
     mu = mu_max
 
     diff = float(mu_max - mu_min)
@@ -167,7 +290,7 @@ def linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
     return mu
 
 
-def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,eps):
+def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,eps, fgradmu=gradmu):
     mu = mu_max
 
     diff = float(mu_max - mu_min)
@@ -198,7 +321,7 @@ def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,ep
 
 
 
-def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_decreasing_line_search,eps=0.00000001):
+def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_decreasing_line_search,eps=0.00000001,fgradmu=gradmu):
     """
 
     :param A:
@@ -233,59 +356,71 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         constraints = A.dot(xk) - C
 
         # figure out active constraints
-        activeConstraints = []
+        active_constraints = []
 
-        for j in range(0,m):
+        for j in range(0, m):
             if constraints[j] >= -eps:
-                activeConstraints.append(j)
+                active_constraints.append(j)
             # end if
         # end for
 
-        # TODO: Matrix P is not always calculable Inv(A^ A) is not doable!!!
         # check if active constraints differ from last iteration
-        if activeConstraints != lastActiveConstraints:
-            print "We have",len(activeConstraints), "active constraints"
-
-            M = A[activeConstraints,:]
+        if active_constraints != lastActiveConstraints and len(active_constraints) > 0:
+            print "We have",len(active_constraints), "active constraints"
+            M = A[active_constraints, :]
             MT = M
             M = M.transpose()
             try:
                 # calculate projection matrix
-                print ""
-                P = np.identity(n) - M.dot(lin.inv(MT.dot(M))).dot(MT)
+                # Check: Using pseudo inverse (pinv) instead of normal inverse, to compensate for linear dependent rows
+                tmp = M.dot(lin.pinv(MT.dot(M))).dot(MT)
+                # the disadvantage of the pseudo inverse is that it might be numerically inaccurate
+                # therefore we check all values if they are < eps and set them to 0
+                # this should greatly help when doing the projection
+                smallvalues=abs(tmp) < eps
+                tmp[smallvalues] = 0.0
+
+                P = np.identity(n) - tmp
             except:
                 print "Error..."
                 print M
-                print "Activeconstraints=", activeConstraints
+                print "Activeconstraints=", active_constraints
                 print "M.size=", M.size
                 print "Rank(M)=", lin.matrix_rank(M)
                 raise
+        elif len(active_constraints) == 0:
+            # means we do not need to project anything
+            P = np.identity(n)
         # end if
 
         # store currently active constraints for next iteration
-        lastActiveConstraints = activeConstraints
+        lastActiveConstraints = active_constraints
+
+        if P.max() == 0:
+            print "STOP Condition: Projection matrix is 0. Exiting..."
+            break
 
         gradbefore = gradf(xk)
 
         # calculate projected descent vector
-        r = -P.dot(gradf(xk))
+        r = -P.dot(gradbefore)
 
-        # make sure that r is actually 0 when it is needed
-        for i in range(0,len(xk)):
-            if abs(r[i]) < eps:
-                r[i] = 0
-
-        # normalize r
-        # r = r/lin.norm(r)
         mu_max = get_max_feasible_mu(A,C,xk,r,eps)
 
+        print "mu_max = ", mu_max, ", norm(r)=", lin.norm(r)
         # TODO: perform line search
-        mu = line_search(xk, r, f, gradf, A, C, eps, mu_max, eps)
+        mu = line_search(xk, r, f, gradf, A, C, eps, mu_max, eps, fgradmu)
 
 
-        #mu1 = gradient_based_line_search(xk, r, f, gradf, A, C, eps, get_max_feasible_mu(A,C,xk,r,eps), eps)
-        #mu2 = linear_decreasing_line_search(xk, r, f, gradf, A, C, eps, get_max_feasible_mu(A,C,xk,r,eps), eps)
+        #mu1 = gradient_based_line_search(xk, r, f, gradf, A, C, eps, mu_max, eps)
+        #mu2 = linear_decreasing_line_search(xk, r, f, gradf, A, C, eps, mu_max, eps)
 
+        #if abs(mu1-mu2) > eps:
+        #    print "Gradient based approach Gradmu=", mu1, ", linearmu= ", mu2
+        #    print "Who is right?"
+        #    plotmu(xk, r, f, gradf, A, C, eps, mu_max, eps)
+        #    print "vals=", f(xk + mu1 * r), "; ", f(xk + mu2 * r), "==> f(xk + mu1 * r) < f(xk + mu2 * r) =", f(xk + mu1 * r) < f(xk + mu2 * r)
+        # end if
         #print "gradient mu=", mu1, "; linear mu=", mu2
         # who is right?
         #print "vals=", f(xk + mu1 * r), "; ", f(xk + mu2 * r), "==>", f(xk + mu1 * r) < f(xk + mu2 * r)
@@ -297,12 +432,11 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
         gradafter = gradf(xk)
 
-        print "norm(before)=", lin.norm(gradbefore), "; norm(after)=", lin.norm(gradafter)
-
         if min(xk) < eps:
             print "Found a bad xk in step ", k, ", this could lead to a crash..."
             print "mu=", mu, ", mu_max=", mu_max
             print xk
+            print "norm(r)=", lin.norm(r)
             plotmu(oldxk, r, f, gradf, A, C, eps, mu_max, eps)
 
         obj = f(xk)
@@ -310,7 +444,7 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         print("Objective=",obj)
 
         if lin.norm(lastobj-obj) < eps/100:
-            print("Relative change < eps, stopping...")
+            print("STOP Condition: Relative change < eps/100, stopping...")
             break
 
         lastobj = obj
@@ -321,5 +455,5 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     #plt.plot(history)
     #plt.show()
 
-    return xk
+    return {'xk': xk, 'k': k}
 
