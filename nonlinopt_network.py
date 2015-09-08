@@ -10,7 +10,7 @@ __status__= 'Development'
 import numpy as np
 import numpy.linalg as lin
 import math
-
+import logging
 
 import matplotlib.pyplot as plt
 
@@ -69,27 +69,25 @@ def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps, fgradmu=grad
     grad_mumin = fgradmu(xk,r,mu_min)
     grad_mumax = fgradmu(xk,r,mu_max)
 
-    print "grad_mumin=", grad_mumin, ", grad_mumax=", grad_mumax
-
-    if abs(grad_mumax) < eps:
-        print "Optimum at mu_max (condition 1 met)"
+    if abs(grad_mumax) < eps and f(xk+mu_max*r) < f(xk):
+        logging.info("gradient_based_line_search: Optimum at mu_max (condition 1)")
         return mu_max
 
     if grad_mumin * grad_mumax < 0:
-        print "There exists a global minimum somewhere here..."
+        logging.info("gradient_based_line_search: There exists a global minimum somewhere here...")
     else:
         if f(xk + mu_max * r) > f(xk + mu_min * r):
-            print "Optimum at mu_min (condition 2 met)"
+            logging.info("gradient_based_line_search: Optimum at mu_min (condition 2)")
             return mu_min
         else:
-            print "Optimum at mu_max (condition 3 met)"
+            logging.info("gradient_based_line_search: Optimum at mu_max (condition 3)")
             return mu_max
 
     #plotmu(xk,r,f,gradf,A,C,mu_min, mu_max,eps)
 
     # perform newton search to find f'(mu) = 0
-    newmu = mu = mu_max / 2.0
-    print "approaching optimum with newton, starting at mu=", mu
+    newmu = mu = 0.0
+    logging.info("gradient_based_line_search: approaching optimum with newton, starting at mu=", mu)
     # this is easy now, just do a newton search, starting at mu=mu_min
 
     lastgradmu = 1000
@@ -102,14 +100,14 @@ def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps, fgradmu=grad
             newmu = eps
 
         while newmu > mu_max:
-            print "Repairing newton solution..."
+            logging.info("gradient_based_line_search: Repairing newton solution...")
             diff = newmu - mu
             newmu -= diff/2
 
 
         newgradmu = fgradmu(xk,r,newmu)
 
-        print "newmu=", newmu, "newgradmu=", newgradmu
+        logging.info("gradient_based_line_search: newmu=", newmu, "grad(newmu)=", newgradmu)
 
 
         mu = newmu
@@ -117,11 +115,8 @@ def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps, fgradmu=grad
         if abs(curgradmu - newgradmu) < eps:
             break
         curgradmu = newgradmu
-        #if mu > mu_max:
 
     # end while
-
-    print"mu = ", newmu
     return newmu
 
 
@@ -295,8 +290,8 @@ def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,ep
 
     diff = float(mu_max - mu_min)
 
-    low_val = float("inf")
-    low_mu = -1
+    low_val = f(xk)
+    low_mu = 0
 
     while mu > mu_min:
         if min(xk + mu *r) > eps: # xk + mu * r > 0 must hold for logarithm
@@ -312,7 +307,7 @@ def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,ep
             print "Infeasible for mu=",mu,"(mu_max=",mu_max,")"
 
         # end if
-        mu = mu - diff/100.0
+        mu = mu - diff/150.0
     # end while
 
     mu = low_mu
@@ -333,7 +328,10 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     :param gradf:
     :param max_iterations:
     :param eps:
-    :return:
+    :return: dictionary: k = number of iterations, xk = found value for x,
+        stop =
+        {0 ... max_iterations reached, 1 ... line_search says 0, 2 ... relative change of x < eps/100,
+         3 ... projection matrix is 0, 4 ... descent direction 0 and lagrange >= 0}
     """
 
     A = np.array(A)
@@ -346,13 +344,15 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     history = []
     AT = A.transpose()
 
+    stop_condition = 0
+
 
     xk = x0
     P = None # projection matrix
     lastActiveConstraints = []
 
     for k in range(1,max_iterations+1):
-        print "Iteration",k
+        logging.info("Iteration",k)
         constraints = A.dot(xk) - C
 
         # figure out active constraints
@@ -366,7 +366,7 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
         # check if active constraints differ from last iteration
         if active_constraints != lastActiveConstraints and len(active_constraints) > 0:
-            print "We have",len(active_constraints), "active constraints"
+            logging.info("We have",len(active_constraints), "active constraints")
             M = A[active_constraints, :]
             MT = M
             M = M.transpose()
@@ -393,11 +393,13 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             P = np.identity(n)
         # end if
 
+
         # store currently active constraints for next iteration
         lastActiveConstraints = active_constraints
 
-        if P.max() == 0:
-            print "STOP Condition: Projection matrix is 0. Exiting..."
+        if P.max() > -eps and P.max() < eps: # equals: P.max() == 0
+            print "STOP Condition: Projection matrix is 0. No improvement possible. Exiting..."
+            stop_condition = 3
             break
 
         gradbefore = gradf(xk)
@@ -405,32 +407,39 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         # calculate projected descent vector
         r = -P.dot(gradbefore)
 
+        if max(r) > -eps and max(r) < eps:
+            # descent direction is almost 0, check lagrange multipliers
+            u = -lin.pinv(MT.dot(M)).dot(MT).dot(gradbefore)
+
+            if min(u) > -0.001:
+                print "STOP Condition: Descent = 0, Lagrange > 0 --> KKT Point found."
+                stop_condition = 4
+                break
+            # else:
+            print "descent = ", r
+
+            print "lagrange=", u
+            print "min(lagrange)=", min(u)
+
+            raise Exception("Descent direction is almost 0, but negative lagrange multipliers found")
+            break
+
         mu_max = get_max_feasible_mu(A,C,xk,r,eps)
 
-        print "mu_max = ", mu_max, ", norm(r)=", lin.norm(r)
-        # TODO: perform line search
+        logging.info("mu_max=", mu_max, "norm(r)=", lin.norm(r))
+
+        # do a line search on f (xk + mu * r), mu >= 0
         mu = line_search(xk, r, f, gradf, A, C, eps, mu_max, eps, fgradmu)
 
-
-        #mu1 = gradient_based_line_search(xk, r, f, gradf, A, C, eps, mu_max, eps)
-        #mu2 = linear_decreasing_line_search(xk, r, f, gradf, A, C, eps, mu_max, eps)
-
-        #if abs(mu1-mu2) > eps:
-        #    print "Gradient based approach Gradmu=", mu1, ", linearmu= ", mu2
-        #    print "Who is right?"
-        #    plotmu(xk, r, f, gradf, A, C, eps, mu_max, eps)
-        #    print "vals=", f(xk + mu1 * r), "; ", f(xk + mu2 * r), "==> f(xk + mu1 * r) < f(xk + mu2 * r) =", f(xk + mu1 * r) < f(xk + mu2 * r)
-        # end if
-        #print "gradient mu=", mu1, "; linear mu=", mu2
-        # who is right?
-        #print "vals=", f(xk + mu1 * r), "; ", f(xk + mu2 * r), "==>", f(xk + mu1 * r) < f(xk + mu2 * r)
-
+        if mu == 0.0:
+            print "STOP Condition: Line search suggests that there is no improvement possible in this direction"
+            stop_condition = 1
+            break
+        logging.info("line search --> mu=", mu)
 
         oldxk = xk
         # modify xk, and check the new objective
         xk = xk + mu * r
-
-        gradafter = gradf(xk)
 
         if min(xk) < eps:
             print "Found a bad xk in step ", k, ", this could lead to a crash..."
@@ -441,19 +450,81 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
         obj = f(xk)
         history.append(obj)
-        print("Objective=",obj)
+        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", norm(r)=", lin.norm(r), ", constraints=", len(active_constraints)
 
         if lin.norm(lastobj-obj) < eps/100:
             print("STOP Condition: Relative change < eps/100, stopping...")
+            stop_condition = 2
             break
+
+        if obj > lastobj:
+            print "Objective is becoming less good.... please check!"
+            plotmu(oldxk, r, f, gradf, A, C, eps, mu_max, eps)
+            raise Exception("Bad Objective")
 
         lastobj = obj
 
     print("Done!")
 
-
     #plt.plot(history)
     #plt.show()
+    optimal = False
+    if check_KKT(A,C,xk,gradf,eps):
+        print "Result is (close enough to) optimal!"
+        optimal = True
 
-    return {'xk': xk, 'k': k}
+    return {'xk': xk, 'k': k, 'stop': stop_condition, 'optimal': optimal, 'history': history}
 
+def check_KKT(A, C, x, gradf, eps):
+    m = A.shape[0]
+    n = A.shape[1]
+
+    gradvalue = gradf(x)
+    residuals = A.dot(x) - C
+
+    # figure out active constraints
+    active_constraints = []
+
+    for j in range(0, m):
+        if residuals[j] >= -eps:
+            active_constraints.append(j)
+        # end if
+    # end for
+
+    M = A[active_constraints, :]
+    MT = M
+    M = M.transpose()
+
+    # calculate lagrange multiplicators
+    u = -lin.pinv(MT.dot(M)).dot(MT).dot(gradvalue)
+
+    if min(u) < -0.01:
+        print "Negative Lagrange multipliers found! Result not optimal!"
+        print u
+        return False
+
+    # determine the real lagrange multiplicators (0 or u_j)
+    real_lagrange = np.zeros(m)
+    cnt = 0
+    activecnt = 0
+
+    for j in range(0, m):
+        if residuals[j] >= -eps:
+            # active
+            real_lagrange[cnt] = u[activecnt]
+            activecnt += 1
+        # else: inactive, lagrange must be 0
+        cnt += 1
+
+    # sum them up
+    sumLagrange = np.zeros(n)
+    for j in range(0,m):
+        sumLagrange += real_lagrange[j] * A[j,:]
+
+    nabla_lagrange = gradvalue + sumLagrange
+    if max(abs(nabla_lagrange)) < 0.001:
+        return True
+    else:
+        print "nabla_lagrange is not 0"
+        print nabla_lagrange
+        return False

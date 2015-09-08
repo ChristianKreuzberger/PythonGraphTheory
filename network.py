@@ -241,7 +241,7 @@ class Network:
             # draw a random server
             k = random.randint(0, len(self.servers)-1)
 
-            print "Selected server ", k
+            #print "Selected server ", k
 
             self.demands[clientName] = {'from': clientName, 'to': self.servers.keys()[k]}
             #   self.demands[clientvalue] = {'from': clientvalue, 'to': demandline[1].strip()}

@@ -4,16 +4,16 @@ from math_network import *
 from nonlinopt_network import *
 import time
 import random
+import logging
 
 if len(sys.argv) > 1:
     minval = int(sys.argv[1])
     maxval = int(sys.argv[2])
 else:
     minval = 1
-    maxval = 2
+    maxval = 100
 
 for rk in range(minval, maxval):
-    rk = 203
     random.seed(rk)
     print "random seed = ", rk
 
@@ -21,7 +21,7 @@ for rk in range(minval, maxval):
         n = Network()
 
         #n.import_network("network.dat")
-        n.create_random_network(200, 100, 10)
+        n.create_random_network(5000, 500, 50)
 
         num_edges = n.graph.ecount()
         num_demands = len(n.demands)
@@ -34,7 +34,7 @@ for rk in range(minval, maxval):
 
         flows = {}
 
-        print "Determining some example flows..."
+        print "Determining intial set of flows..."
 
         start = time.time()
 
@@ -43,6 +43,8 @@ for rk in range(minval, maxval):
         stop = time.time()
 
         time1 = stop - start
+
+        print "Determining second initial set of flows (should be better)..."
 
         start = time.time()
 
@@ -95,26 +97,10 @@ for rk in range(minval, maxval):
         print "!!!!!!!! smart_linear_decreasing_line_search Took ", stop - start, " seconds!"
 
 
-        start = time.time()
-        flows[7] = nlp_optimize_network(M,C,flows[1]['xk'],c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=binary_line_search_gradient)
-        stop = time.time()
-
-        time7 = stop - start
-
-        print "!!!!!!!! binary_line_search Took ", stop - start, " seconds!"
-
-        start = time.time()
-        flows[8] = nlp_optimize_network(M,C,flows[2]['xk'],c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=binary_line_search_gradient)
-        stop = time.time()
-
-        time8 = stop - start
-
-        print "!!!!!!!! binary_line_search Took ", stop - start, " seconds!"
-
         res = {}
 
 
-        for i in range(1,9):
+        for i in range(1,7):
             res[i] = M.dot(flows[i]['xk']) - C
 
         print ("Log(flows)","Sum(flows)","Time used","Total time used","Residuals","NumIterations")
@@ -131,9 +117,6 @@ for rk in range(minval, maxval):
 
         print(c_log_sum_flows(flows[6]['xk']), c_sum_flows(flows[6]['xk']), time6, time6 + time2, max(res[6]), flows[6]['k'])
 
-        print(c_log_sum_flows(flows[7]['xk']), c_sum_flows(flows[7]['xk']), time7, time7 + time1, max(res[7]), flows[7]['k'])
-
-        print(c_log_sum_flows(flows[8]['xk']), c_sum_flows(flows[8]['xk']), time8, time8 + time2, max(res[8]), flows[8]['k'])
     except:
         print "Error in iteration for random seed =", rk
         raise
