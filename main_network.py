@@ -10,18 +10,17 @@ if len(sys.argv) > 1:
     minval = int(sys.argv[1])
     maxval = int(sys.argv[2])
 else:
-    minval = 1
-    maxval = 100
+    minval = 16
+    maxval = 500
 
 for rk in range(minval, maxval):
     random.seed(rk)
-    print "random seed = ", rk
 
     try:
         n = Network()
 
         #n.import_network("network.dat")
-        n.create_random_network(5000, 500, 50)
+        n.create_random_network(500, 1000, 50)
 
         num_edges = n.graph.ecount()
         num_demands = len(n.demands)
@@ -32,7 +31,16 @@ for rk in range(minval, maxval):
         M = n.export_demand_paths_matrix()
         C = n.export_edge_capacity()
 
+        # remove unnecessary inequalities
+        [Mnew,Cnew] = n.remove_unnecessary_edges(M,C)
+
+        print "Reduced M from ", M.shape, " to ", Mnew.shape
+
+        M = Mnew
+        C = Cnew
+
         flows = {}
+        runtimes = {}
 
         print "Determining intial set of flows..."
 
@@ -42,7 +50,9 @@ for rk in range(minval, maxval):
 
         stop = time.time()
 
-        time1 = stop - start
+        runtimes[1] = stop - start
+
+        print "Done after ", runtimes[1]
 
         print "Determining second initial set of flows (should be better)..."
 
@@ -52,8 +62,9 @@ for rk in range(minval, maxval):
 
         stop = time.time()
 
-        time2 = stop - start
+        runtimes[2] = stop - start
 
+        print "Done after ", runtimes[2]
 
 
         start = time.time()
@@ -61,9 +72,10 @@ for rk in range(minval, maxval):
         flows[3] = nlp_optimize_network(M,C,flows[1]['xk'],c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=gradient_based_line_search,fgradmu=gradmu)
         stop = time.time()
 
-        time3 = stop - start
+        runtimes[3] = stop - start
 
         print "!!!!!!!! gradient_based_line_search Took ", stop - start, " seconds!"
+
 
 
         start = time.time()
@@ -71,7 +83,7 @@ for rk in range(minval, maxval):
         flows[4] = nlp_optimize_network(M,C,flows[1]['xk'],c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=smart_linear_decreasing_line_search)
         stop = time.time()
 
-        time4 = stop - start
+        runtimes[4] = stop - start
 
         print "!!!!!!!! smart_linear_decreasing_line_search Took ", stop - start, " seconds!"
 
@@ -82,7 +94,7 @@ for rk in range(minval, maxval):
         flows[5] = nlp_optimize_network(M,C,flows[2]['xk'],c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=gradient_based_line_search,fgradmu=gradmu)
         stop = time.time()
 
-        time5 = stop - start
+        runtimes[5] = stop - start
 
         print "!!!!!!!! gradient_based_line_search Took ", stop - start, " seconds!"
 
@@ -92,31 +104,43 @@ for rk in range(minval, maxval):
         flows[6] = nlp_optimize_network(M,C,flows[2]['xk'],c_neg_log_sum_flows,c_grad_neg_log_sum_flows,5000,line_search=smart_linear_decreasing_line_search)
         stop = time.time()
 
-        time6 = stop - start
+        runtimes[6] = stop - start
 
         print "!!!!!!!! smart_linear_decreasing_line_search Took ", stop - start, " seconds!"
 
 
         res = {}
 
+        print "RESULTS FOR RANDOM SEED rk=" + str(rk)
+        print ("Log(flows)","Diff(Log(bestflow))", "Sum(flows)","Diff(Sum(bestflow))", "Time used","Total time used","Residuals","NumIterations")
+
+        max_sum_value = 0.0
+        max_sum_i = 0
+        max_log_sum_value = 0.0
+        max_log_sum_i = 0
 
         for i in range(1,7):
             res[i] = M.dot(flows[i]['xk']) - C
+            flows[i]['logsum'] = c_log_sum_flows(flows[i]['xk'])
+            flows[i]['sum'] = c_sum_flows(flows[i]['xk'])
 
-        print ("Log(flows)","Sum(flows)","Time used","Total time used","Residuals","NumIterations")
+            if max_sum_value < flows[i]['sum']:
+                max_sum_value = flows[i]['sum']
+                max_sum_i = i
+            if max_log_sum_value < flows[i]['logsum']:
+                max_log_sum_value = flows[i]['logsum']
+                max_log_sum_i = i
 
-        print(c_log_sum_flows(flows[1]['xk']), c_sum_flows(flows[1]['xk']), time1, time1, max(res[1]), flows[1]['k'])
+            flows[i]['res'] = res[i]
 
-        print(c_log_sum_flows(flows[2]['xk']), c_sum_flows(flows[2]['xk']), time2, time2, max(res[2]), flows[2]['k'])
+        for i in range(1,7):
+            print(flows[i]['logsum'], max_log_sum_value-flows[i]['logsum'], flows[i]['sum'], max_sum_value - flows[i]['sum'], runtimes[i], runtimes[i], max(flows[i]['res']), flows[i]['k'])
 
-        print(c_log_sum_flows(flows[3]['xk']), c_sum_flows(flows[3]['xk']), time3, time3 + time1, max(res[3]), flows[3]['k'])
-
-        print(c_log_sum_flows(flows[4]['xk']), c_sum_flows(flows[4]['xk']), time4, time4 + time1, max(res[4]), flows[4]['k'])
-
-        print(c_log_sum_flows(flows[5]['xk']), c_sum_flows(flows[5]['xk']), time5, time5 + time2, max(res[5]), flows[5]['k'])
-
-        print(c_log_sum_flows(flows[6]['xk']), c_sum_flows(flows[6]['xk']), time6, time6 + time2, max(res[6]), flows[6]['k'])
-
+        for i in range(3,7):
+            if max_log_sum_value-flows[i]['logsum'] > 5:
+                print "CHECKPOINT REACHED - result for algo", i, " is not optimal!"
+                exit()
+        exit()
     except:
         print "Error in iteration for random seed =", rk
         raise

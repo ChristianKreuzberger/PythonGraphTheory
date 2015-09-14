@@ -300,7 +300,16 @@ class Network:
 
         for e in self.graph.es:
             capacity.append(e['capacity'])
-        return capacity
+        return np.array(capacity)
+
+
+    def remove_unnecessary_edges(self, M,C):
+        rowsum = (np.sum(M,axis=1) > 0)
+
+        Mnew = M[rowsum,:]
+        Cnew = C[rowsum]
+
+        return [Mnew,Cnew]
 
 
     def calculate_fixed_single_path_blocking_min_flows(self):
@@ -394,11 +403,8 @@ class Network:
                 # end if demand is active
             # end for all demands
 
-            print "Determining residuals"
             # calculate residual bandwidth per edge
             res = C - A.dot(curflows)
-
-            print "Determining which demands need to be deactivated"
 
             omega = {}
 

@@ -29,8 +29,7 @@ def is_feasible(A,C,x,eps):
 
 
 def get_max_feasible_mu(A,C,x,r, eps):
-    mu_max = -max([ (x[i]/r[i] if r[i] < -eps else -float("inf") ) for i in range(0,len(x))])
-    mu_max = mu_max * (1.0 - eps) # just to be sure
+    mu_max = -max([ (x[i]/r[i] if r[i] < 0 else -float("inf") ) for i in range(0,len(x))])
 
     impact = A.dot(r)
 
@@ -42,6 +41,9 @@ def get_max_feasible_mu(A,C,x,r, eps):
                 mu = (-val)/impact[j]
                 if mu > eps and mu < mu_max: # we only want positive mu
                     mu_max = mu
+
+    mu_max = mu_max * (1.0 - eps) # just to be sure
+
     return min(mu_max,float("10e10"))
 
 
@@ -66,17 +68,28 @@ def secondorder(xk,r,mu):
 def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps, fgradmu=gradmu):
     # check gradmu(0) * gradmu(mu_max)
 
-    grad_mumin = fgradmu(xk,r,mu_min)
-    grad_mumax = fgradmu(xk,r,mu_max)
 
-    if abs(grad_mumax) < eps and f(xk+mu_max*r) < f(xk):
+    try:
+        grad_mumin = fgradmu(xk,r,mu_min)
+        grad_mumax = fgradmu(xk,r,mu_max)
+
+        value_mumax = f(xk+mu_max*r)
+        value_mumin = f(xk + mu_min * r)
+    except:
+        print "mu_max = ", mu_max
+        print "xk + r * mu_max = ", (xk + r * mu_max)
+        print "r = ", r
+        raise
+
+
+    if abs(grad_mumax) < eps and value_mumax < f(xk):
         logging.info("gradient_based_line_search: Optimum at mu_max (condition 1)")
         return mu_max
 
     if grad_mumin * grad_mumax < 0:
         logging.info("gradient_based_line_search: There exists a global minimum somewhere here...")
     else:
-        if f(xk + mu_max * r) > f(xk + mu_min * r):
+        if value_mumax > value_mumin:
             logging.info("gradient_based_line_search: Optimum at mu_min (condition 2)")
             return mu_min
         else:
@@ -450,7 +463,7 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
         obj = f(xk)
         history.append(obj)
-        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", norm(r)=", lin.norm(r), ", constraints=", len(active_constraints)
+        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", norm(r)=", lin.norm(r), ", sum(x)=", sum(xk), ", constraints=", len(active_constraints)
 
         if lin.norm(lastobj-obj) < eps/100:
             print("STOP Condition: Relative change < eps/100, stopping...")
