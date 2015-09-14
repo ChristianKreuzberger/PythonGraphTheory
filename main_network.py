@@ -10,8 +10,8 @@ if len(sys.argv) > 1:
     minval = int(sys.argv[1])
     maxval = int(sys.argv[2])
 else:
-    minval = 16
-    maxval = 500
+    minval = 1
+    maxval = 2
 
 for rk in range(minval, maxval):
     random.seed(rk)
@@ -137,10 +137,13 @@ for rk in range(minval, maxval):
             print(flows[i]['logsum'], max_log_sum_value-flows[i]['logsum'], flows[i]['sum'], max_sum_value - flows[i]['sum'], runtimes[i], runtimes[i], max(flows[i]['res']), flows[i]['k'])
 
         for i in range(3,7):
-            if max_log_sum_value-flows[i]['logsum'] > 5:
+            if max_log_sum_value-flows[i]['logsum'] > 10:
                 print "CHECKPOINT REACHED - result for algo", i, " is not optimal!"
                 exit()
-        exit()
+            if max(flows[i]['res']) > 0.01:
+                print "CHECKPOINT REACHED - result for algo", i, " has large residual!"
+                exit()
+
     except:
         print "Error in iteration for random seed =", rk
         raise
