@@ -37,9 +37,9 @@ def get_max_feasible_mu(A,C,x,r, eps):
         if abs(impact[j]) > eps: # yes this inequality has an impact on the result here
             # check if inequality is not active
             val  = A[j,:].dot(x) - C[j]
-            if val < -eps: # it was active, we can improve it
+            if val < 0: # it was active, we can improve it
                 mu = (-val)/impact[j]
-                if mu > eps and mu < mu_max: # we only want positive mu
+                if mu > eps/100 and mu < mu_max: # we only want positive mu
                     mu_max = mu
 
     mu_max = mu_max * (1.0 - eps) # just to be sure
@@ -300,12 +300,10 @@ def linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,eps, fgr
 
 def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,eps, fgradmu=gradmu):
     mu = mu_max
-
     diff = float(mu_max - mu_min)
 
     low_val = f(xk)
     low_mu = 0
-
     while mu > mu_min:
         if min(xk + mu *r) > eps: # xk + mu * r > 0 must hold for logarithm
             cur_val = f(xk + mu * r)
@@ -323,9 +321,13 @@ def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,ep
         mu = mu - diff/150.0
     # end while
 
-    mu = low_mu
+    new_min_mu = max(0.0,low_mu - diff/75.0)
+    new_max_mu = min(low_mu + diff/75.0, mu_max)
 
-    return mu
+    if new_max_mu - new_min_mu > 1:
+        return smart_linear_decreasing_line_search(xk,r,f,gradf,A,C,new_min_mu,new_max_mu,eps,fgradmu)
+    else:
+        return low_mu
 
 
 
@@ -443,12 +445,13 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
         # do a line search on f (xk + mu * r), mu >= 0
         mu = line_search(xk, r, f, gradf, A, C, eps, mu_max, eps, fgradmu)
+        logging.info("line search --> mu=", mu)
 
         if mu == 0.0:
-            print "STOP Condition: Line search suggests that there is no improvement possible in this direction"
+            print "STOP Condition: Line search suggests that there is no improvement possible in this direction (mu=", mu, ", mu_max=", mu_max, ")"
             stop_condition = 1
             break
-        logging.info("line search --> mu=", mu)
+
 
         oldxk = xk
         # modify xk, and check the new objective
@@ -463,7 +466,10 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
         obj = f(xk)
         history.append(obj)
-        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", norm(r)=", lin.norm(r), ", sum(x)=", sum(xk), ", constraints=", len(active_constraints)
+        maxres = max(A.dot(xk) - C)
+
+
+        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", norm(r)=", lin.norm(r), ", sum(x)=", sum(xk), ", maxres=",maxres, ", constraints=", len(active_constraints)
 
         if lin.norm(lastobj-obj) < eps/100:
             print("STOP Condition: Relative change < eps/100, stopping...")
