@@ -11,7 +11,7 @@ if len(sys.argv) > 1:
     maxval = int(sys.argv[2])
 else:
     minval = 1
-    maxval = 2
+    maxval = 7
 
 for rk in range(minval, maxval):
     random.seed(rk)
