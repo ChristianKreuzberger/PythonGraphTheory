@@ -345,7 +345,8 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     :return: dictionary: k = number of iterations, xk = found value for x,
         stop =
         {0 ... max_iterations reached, 1 ... line_search says 0, 2 ... relative change of x < eps/100,
-         3 ... projection matrix is 0, 4 ... descent direction 0 and lagrange >= 0}
+         3 ... projection matrix is 0, 4 ... descent direction 0 and lagrange >= 0
+         5 ... object is becoming worse, 6 ... mu_max < eps}
     """
 
     A = np.array(A)
@@ -365,11 +366,12 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     AT = A.transpose()
 
     stop_condition = 0
-
+    last_mu_max = float("inf")
 
     xk = x0
     P = None # projection matrix
     lastActiveConstraints = []
+
 
     print "Iteration 0: Obj=", f(xk) , ", sum(x)=", sum(xk)
 
@@ -377,6 +379,8 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
 
     for k in range(1,max_iterations+1):
         logging.info("Iteration",k)
+
+        newconstraints = False
 
         # figure out active constraints
         active_constraints = []
@@ -393,6 +397,7 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             M = A[active_constraints, :]
             MT = M
             M = M.transpose()
+            newconstraints = True
             try:
                 # calculate projection matrix
                 # Check: Using pseudo inverse (pinv) instead of normal inverse, to compensate for linear dependent rows
@@ -433,9 +438,6 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         r = -P.dot(gradbefore)
 
         if max(r) > -eps and max(r) < eps and len(active_constraints) > 0:
-            print "residuals = ", A.dot(xk) - C
-            print active_constraints
-            print r
             # descent direction is almost 0, check lagrange multipliers
             u = -lin.pinv(MT.dot(M)).dot(MT).dot(gradbefore)
 
@@ -452,8 +454,56 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             raise Exception("Descent direction is almost 0, but negative lagrange multipliers found")
             break
 
+        r = r / lin.norm(r)
+
         # get maximal feasible mu (such that xk + mu * r >= 0 and A * (xk + mu * r) <= C )
         mu_max = get_max_feasible_mu(A,C,xk,r,residuals, eps)
+
+        if mu_max < eps:
+            print "mu_max too small; I think we are done, there is no more progress....";
+            # FIX r
+            # find all 0 <= i < n such that x_i can still be increased
+            active_x = np.zeros(n)
+
+            for j in range(0,m):
+                if j in active_constraints:
+                    for i in range(0,n):
+                        if A[j,i] == 1: #
+                            active_x[i] = 1
+
+            #print "The following x_i can still be improved:"
+            r = np.zeros(n)
+            for i in range(0,n):
+                if active_x[i] == 0:
+                    max_increase = float("inf")
+                    # check all inequalities with A[j,i] == 1
+                    for j in range(0,m):
+                        if A[j,i] == 1:
+                            val = -residuals[j] / sumA[j]
+                            if val < max_increase:
+                                max_increase = val
+                    if max_increase > eps:
+                        #print i, ", max increasable by:", max_increase, ", cur_val=", xk[i]
+                        r[i] = 1.0 / xk[i]
+            if not max(r) > 0:
+                print "STOP Condition: no more improvement possible!..."
+                stop_condition = 6
+                exit()
+                break
+            else:
+                # normalize r
+                r = r / lin.norm(r)
+
+                # calculate new mu_max
+                mu_max = get_max_feasible_mu(A,C,xk,r,residuals, eps)
+                print "new mu_max=", mu_max
+            #stop_condition = 6
+            #break
+
+
+        if mu_max < eps:
+            print "We have a problem... mu_max < eps, mu_max =", mu_max
+            exit()
 
         # find argmin_{0 < mu < mu_max): f (xk + mu * r)
         mu = line_search(xk, r, f, gradf, A, C, eps, mu_max, eps, fgradmu)
@@ -491,7 +541,8 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         maxres = max(residuals)
 
 
-        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", sum(x)=", sum(xk), ", maxres=",maxres, ", constraints=", len(active_constraints)
+        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", sum(x)=", sum(xk), ", maxres=",maxres, ", constraints=", len(active_constraints), "new=", newconstraints
+
 
         if abs(lastobj-obj) < goal_acc:
             print "STOP Condition: Relative change < ", goal_acc, ", stopping..."
@@ -502,20 +553,16 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             print "STOP Condition: Objective is becoming less good.... please check!"
             #plotmu(oldxk, r, f, gradf, A, C, eps, mu_max, eps)
             stop_condition = 5
+            break
 
         # update objective value and store it for next iteration
         lastobj = obj
+        last_mu_max = mu_max
 
     print("Done!")
 
-    #plt.plot(history)
-    #plt.show()
-    optimal = False
-    if check_KKT(A,C,xk,gradf,eps):
-        print "Result is (close enough to) optimal!"
-        optimal = True
 
-    return {'xk': xk, 'k': k, 'stop': stop_condition, 'optimal': optimal, 'history': history}
+    return {'xk': xk, 'k': k, 'stop': stop_condition, 'history': history}
 
 def check_KKT(A, C, x, gradf, eps):
     m = A.shape[0]
@@ -568,5 +615,7 @@ def check_KKT(A, C, x, gradf, eps):
         return True
     else:
         print "nabla_lagrange is not 0"
+        print "max(nabla_lagrange)=", max(nabla_lagrange)
+        print "min(nabla_lagrange)=", min(nabla_lagrange)
         print nabla_lagrange
         return False
