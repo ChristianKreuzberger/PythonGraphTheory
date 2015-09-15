@@ -28,17 +28,16 @@ def is_feasible(A,C,x,eps):
 
 
 
-def get_max_feasible_mu(A,C,x,r, eps):
+def get_max_feasible_mu(A,C,x,r, residuals, eps):
     mu_max = -max([ (x[i]/r[i] if r[i] < 0 else -float("inf") ) for i in range(0,len(x))])
 
     impact = A.dot(r)
 
     for j in range(0,len(C)):
         if abs(impact[j]) > eps: # yes this inequality has an impact on the result here
-            # check if inequality is not active
-            val  = A[j,:].dot(x) - C[j]
-            if val < 0: # it was active, we can improve it
-                mu = (-val)/impact[j]
+            # check if inequality is not (yet) active
+            if residuals[j] < 0: # it was not active, means we can improve it
+                mu = (-residuals[j])/impact[j]
                 if mu > eps/100 and mu < mu_max: # we only want positive mu
                     mu_max = mu
 
@@ -125,7 +124,7 @@ def gradient_based_line_search(xk,r,f,gradf,A,C,mu_min, mu_max,eps, fgradmu=grad
 
         mu = newmu
 
-        if abs(curgradmu - newgradmu) < eps:
+        if abs(curgradmu - newgradmu) < eps/100:
             break
         curgradmu = newgradmu
 
@@ -318,20 +317,20 @@ def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,ep
             print "Infeasible for mu=",mu,"(mu_max=",mu_max,")"
 
         # end if
-        mu = mu - diff/150.0
+        mu = mu - diff/30.0
     # end while
 
-    new_min_mu = max(0.0,low_mu - diff/75.0)
-    new_max_mu = min(low_mu + diff/75.0, mu_max)
+    new_min_mu = max(0.0,low_mu - diff/15.0)
+    new_max_mu = min(low_mu + diff/15.0, mu_max)
 
-    if new_max_mu - new_min_mu > 1:
+    if diff > 5:
         return smart_linear_decreasing_line_search(xk,r,f,gradf,A,C,new_min_mu,new_max_mu,eps,fgradmu)
     else:
         return low_mu
 
 
 
-def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_decreasing_line_search,eps=0.00000001,fgradmu=gradmu):
+def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_decreasing_line_search,eps=0.00000001,fgradmu=gradmu,goal_acc=0.000000000001):
     """
 
     :param A:
@@ -356,6 +355,12 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     lastobj = obj = f(x0)
 
 
+    sumA = np.zeros(m)
+
+    for j in range(0,m):
+        sumA[j] = sum(A[j,:])
+
+
     history = []
     AT = A.transpose()
 
@@ -366,15 +371,18 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     P = None # projection matrix
     lastActiveConstraints = []
 
+    print "Iteration 0: Obj=", f(xk) , ", sum(x)=", sum(xk)
+
+    residuals = A.dot(xk) - C
+
     for k in range(1,max_iterations+1):
         logging.info("Iteration",k)
-        constraints = A.dot(xk) - C
 
         # figure out active constraints
         active_constraints = []
 
         for j in range(0, m):
-            if constraints[j] >= -eps:
+            if residuals[j] >= -eps:
                 active_constraints.append(j)
             # end if
         # end for
@@ -403,6 +411,13 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
                 print "M.size=", M.size
                 print "Rank(M)=", lin.matrix_rank(M)
                 raise
+
+            # check if P has only entries close to 0
+            if P.max() > -eps and P.max() < eps: # equals: P.max() == 0
+                print "STOP Condition: Projection matrix is (almost) 0. No improvement possible. Exiting..."
+                stop_condition = 3
+                break
+
         elif len(active_constraints) == 0:
             # means we do not need to project anything
             P = np.identity(n)
@@ -412,17 +427,15 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         # store currently active constraints for next iteration
         lastActiveConstraints = active_constraints
 
-        if P.max() > -eps and P.max() < eps: # equals: P.max() == 0
-            print "STOP Condition: Projection matrix is 0. No improvement possible. Exiting..."
-            stop_condition = 3
-            break
-
         gradbefore = gradf(xk)
 
         # calculate projected descent vector
         r = -P.dot(gradbefore)
 
-        if max(r) > -eps and max(r) < eps:
+        if max(r) > -eps and max(r) < eps and len(active_constraints) > 0:
+            print "residuals = ", A.dot(xk) - C
+            print active_constraints
+            print r
             # descent direction is almost 0, check lagrange multipliers
             u = -lin.pinv(MT.dot(M)).dot(MT).dot(gradbefore)
 
@@ -439,11 +452,10 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             raise Exception("Descent direction is almost 0, but negative lagrange multipliers found")
             break
 
-        mu_max = get_max_feasible_mu(A,C,xk,r,eps)
+        # get maximal feasible mu (such that xk + mu * r >= 0 and A * (xk + mu * r) <= C )
+        mu_max = get_max_feasible_mu(A,C,xk,r,residuals, eps)
 
-        logging.info("mu_max=", mu_max, "norm(r)=", lin.norm(r))
-
-        # do a line search on f (xk + mu * r), mu >= 0
+        # find argmin_{0 < mu < mu_max): f (xk + mu * r)
         mu = line_search(xk, r, f, gradf, A, C, eps, mu_max, eps, fgradmu)
         logging.info("line search --> mu=", mu)
 
@@ -452,35 +464,46 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             stop_condition = 1
             break
 
-
         oldxk = xk
         # modify xk, and check the new objective
         xk = xk + mu * r
 
-        if min(xk) < eps:
-            print "Found a bad xk in step ", k, ", this could lead to a crash..."
-            print "mu=", mu, ", mu_max=", mu_max
-            print xk
-            print "norm(r)=", lin.norm(r)
-            plotmu(oldxk, r, f, gradf, A, C, eps, mu_max, eps)
+
+        # check new residuals, and fix the result if needed
+        for j in range(0,m):
+            # calculate new residual for constraint j
+            residual = A[j,:].dot(xk) - C[j]
+            if residual > eps/100: # >= 0
+                residuals[j] = 0.0
+                # need to subtract residual / sum A_j for all xk_i
+                for i in range(0,n):
+                    if A[j,i] == 1: # only fix if this one is part of it
+                        xk[i] -= (residual/sumA[j])
+            else:
+                residuals[j] = residual
+        # xk should be fine now
+
 
         obj = f(xk)
         history.append(obj)
-        maxres = max(A.dot(xk) - C)
 
 
-        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", norm(r)=", lin.norm(r), ", sum(x)=", sum(xk), ", maxres=",maxres, ", constraints=", len(active_constraints)
+        maxres = max(residuals)
 
-        if lin.norm(lastobj-obj) < eps/100:
-            print("STOP Condition: Relative change < eps/100, stopping...")
+
+        print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", sum(x)=", sum(xk), ", maxres=",maxres, ", constraints=", len(active_constraints)
+
+        if abs(lastobj-obj) < goal_acc:
+            print "STOP Condition: Relative change < ", goal_acc, ", stopping..."
             stop_condition = 2
             break
 
         if obj > lastobj:
-            print "Objective is becoming less good.... please check!"
-            plotmu(oldxk, r, f, gradf, A, C, eps, mu_max, eps)
-            raise Exception("Bad Objective")
+            print "STOP Condition: Objective is becoming less good.... please check!"
+            #plotmu(oldxk, r, f, gradf, A, C, eps, mu_max, eps)
+            stop_condition = 5
 
+        # update objective value and store it for next iteration
         lastobj = obj
 
     print("Done!")
