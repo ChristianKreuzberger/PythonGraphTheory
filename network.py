@@ -312,14 +312,12 @@ class Network:
         return [Mnew,Cnew]
 
 
-    def calculate_fixed_single_path_blocking_min_flows(self):
+    def calculate_fixed_single_path_blocking_min_flows(self, A, C):
         """ A heuristik for calculating fixed single path flows - minimum flows
         :return: an array with the resulting flows, in the same order as Network.demands
         """
-        # get shortest-path-demand incidence matrix
-        A = self.export_demand_paths_matrix()
-        C = self.export_edge_capacity()
-        numEdges = self.graph.ecount()
+        numEdges = A.shape[0] # number of rows of A
+        numDemands = A.shape[1] # number of columns of A
 
         flows = np.zeros(len(self.demands))
 
@@ -336,7 +334,7 @@ class Network:
             for j in range(0,numEdges):
                 # check if this demand is flowing over this link
                 if A[j,i] == 1:
-                    avg = C[j] / sumAj[j]
+                    avg = float(C[j]) / float(sumAj[j])
                     if avg < val:
                         val = avg
                     # end if
@@ -349,7 +347,51 @@ class Network:
 
 
 
-    def calculate_fixed_single_path_blocking_maxmin_flows(self):
+    def calculate_fixed_single_path_blocking_min_flows_new(self, A, C):
+        """ A heuristik for calculating fixed single path flows - minimum flows
+        :return: an array with the resulting flows, in the same order as Network.demands
+        """
+        numEdges = A.shape[0] # number of rows of A
+        numDemands = A.shape[1] # number of columns of A
+
+        flows = np.zeros(len(self.demands))
+
+        C = np.copy(C)
+        A = np.copy(A)
+
+        sumAj = []
+
+        # pre calculate sum (A[j,:]) for all j
+        for j in range(0,numEdges):
+            sumAj.append(sum(A[j,:]))
+
+        # go over all demands
+        for i in range(0,len(self.demands)):
+            # determine the average path value
+            val = float("inf")
+            for j in range(0,numEdges):
+                # check if this demand is flowing over this link
+                if A[j,i] == 1:
+                    avg = float(C[j]) / float(sumAj[j])
+                    if avg < val:
+                        val = avg
+                    # end if
+                # end if flowing over this link
+            # end for all edges
+            flows[i] = val
+            # subtract this from all edges
+            for j in range(0,numEdges):
+                if A[j,i] == 1:
+                    sumAj[j] -= 1
+                    C[j] -= flows[i]
+                    A[j,i] = 0
+                # end if
+            # end for
+        # end for all demands
+
+        return flows
+
+    def calculate_fixed_single_path_one_flow(self, A, C):
         """ A heuristik for calculating fixed single path flows - minimum flows
         :return: an array with the resulting flows, in the same order as Network.demands
         """
@@ -358,12 +400,37 @@ class Network:
             print"Error: no demands available"
             return []
 
+        numEdges = A.shape[0] # number of rows of A
+        numDemands = A.shape[1] # number of columns of A
 
-        # get shortest-path-demand incidence matrix
-        A = self.export_demand_paths_matrix()
-        C = self.export_edge_capacity()
-        numEdges = self.graph.ecount()
-        numDemands = len(self.demands)
+        min_concur_flow = float("inf")
+
+        for j in range(0,numEdges):
+            val = C[j] / sum(A[j,:])
+            if val < min_concur_flow:
+                min_concur_flow = val
+        # end for
+
+        flows = np.ones(numDemands)*min_concur_flow
+
+        return flows
+
+
+    def calculate_fixed_single_path_blocking_maxmin_flows(self, A, C):
+        """ A heuristik for calculating fixed single path flows - minimum flows
+        :return: an array with the resulting flows, in the same order as Network.demands
+        """
+
+        if len(self.demands) == 0:
+            print"Error: no demands available"
+            return []
+
+        A = np.copy(A)
+        C = np.copy(C)
+
+
+        numEdges = A.shape[0] # number of rows of A
+        numDemands = A.shape[1] # number of columns of A
 
         totalflows = np.zeros(len(self.demands))
 
