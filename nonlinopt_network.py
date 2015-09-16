@@ -31,6 +31,8 @@ def is_feasible(A,C,x,eps):
 def get_max_feasible_mu(A,C,x,r, residuals, eps):
     mu_max = -max([ (x[i]/r[i] if r[i] < 0 else -float("inf") ) for i in range(0,len(x))])
 
+    # print "1) positive x restriction --> mu_max=", mu_max
+
     impact = A.dot(r)
 
     for j in range(0,len(C)):
@@ -42,6 +44,8 @@ def get_max_feasible_mu(A,C,x,r, residuals, eps):
                     mu_max = mu
 
     mu_max = mu_max * (1.0 - eps) # just to be sure
+
+    # print "2) A x <= C restriction --> mu_max=", mu_max
 
     return min(mu_max,float("10e10"))
 
@@ -330,7 +334,7 @@ def smart_linear_decreasing_line_search(xk, r, f, gradf, A, C, mu_min, mu_max,ep
 
 
 
-def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_decreasing_line_search,eps=0.00000001,fgradmu=gradmu,goal_acc=0.000000000001):
+def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_decreasing_line_search,eps=0.00000001,fgradmu=gradmu,goal_acc=0.0001):
     """
 
     :param A:
@@ -359,7 +363,7 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     sumA = np.zeros(m)
 
     for j in range(0,m):
-        sumA[j] = sum(A[j,:])
+        sumA[j] = float(sum(A[j,:]))
 
 
     history = []
@@ -372,10 +376,28 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
     P = None # projection matrix
     lastActiveConstraints = []
 
-
-    print "Iteration 0: Obj=", f(xk) , ", sum(x)=", sum(xk)
-
     residuals = A.dot(xk) - C
+
+    # check how many variables can still be increased
+    active_constraints = []
+    for j in range(0, m):
+        if residuals[j] >= -eps:
+            active_constraints.append(j)
+
+    active_x = np.sum(A[active_constraints,:],axis=0)
+    real_active_x = (active_x != 0)
+
+    if n == sum(real_active_x):
+        print "WARNING: The current solution can not be improved (by much)! You might run into a local optimum!"
+    else:
+        print "There are", n-sum(real_active_x), "variables that can still be improved!"
+
+
+    print "Iteration 0: Obj=", f(xk) , ", sum(x)=", sum(xk), ",constraints=", len(active_constraints)
+
+
+
+    active_x = np.zeros(n)
 
     for k in range(1,max_iterations+1):
         logging.info("Iteration",k)
@@ -386,7 +408,7 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         active_constraints = []
 
         for j in range(0, m):
-            if residuals[j] >= -eps:
+            if residuals[j]/sumA[j] >= -eps:
                 active_constraints.append(j)
             # end if
         # end for
@@ -399,6 +421,12 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             M = M.transpose()
             newconstraints = True
             try:
+                # find all 0 <= i < n such that x_i can still be increased
+                # active_x = np.sum(A[active_constraints,:],axis=0)
+                # real_active_x = (active_x != 0)
+                # print "There are ", n - sum(real_active_x), " x that still can be increased"
+
+
                 # calculate projection matrix
                 # Check: Using pseudo inverse (pinv) instead of normal inverse, to compensate for linear dependent rows
                 tmp = M.dot(lin.pinv(MT.dot(M))).dot(MT)
@@ -409,6 +437,9 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
                 tmp[smallvalues] = 0.0
 
                 P = np.identity(n) - tmp
+
+                smallvalues=abs(P) < eps
+                P[smallvalues] = 0.0
             except:
                 print "Error..."
                 print M
@@ -460,45 +491,6 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         mu_max = get_max_feasible_mu(A,C,xk,r,residuals, eps)
 
         if mu_max < eps:
-            print "mu_max too small; I think we are done, there is no more progress....";
-            # FIX r
-            # find all 0 <= i < n such that x_i can still be increased
-            active_x = np.zeros(n)
-
-            for j in range(0,m):
-                if j in active_constraints:
-                    for i in range(0,n):
-                        if A[j,i] == 1: #
-                            active_x[i] = 1
-
-            #print "The following x_i can still be improved:"
-            r = np.zeros(n)
-            for i in range(0,n):
-                if active_x[i] == 0:
-                    max_increase = float("inf")
-                    # check all inequalities with A[j,i] == 1
-                    for j in range(0,m):
-                        if A[j,i] == 1:
-                            val = -residuals[j] / sumA[j]
-                            if val < max_increase:
-                                max_increase = val
-                    if max_increase > eps:
-                        #print i, ", max increasable by:", max_increase, ", cur_val=", xk[i]
-                        r[i] = 1.0 / xk[i]
-            if not max(r) > 0:
-                print "STOP Condition: no more improvement possible!..."
-                stop_condition = 6
-                break
-            else:
-                # normalize r
-                r = r / lin.norm(r)
-
-                # calculate new mu_max
-                mu_max = get_max_feasible_mu(A,C,xk,r,residuals, eps)
-                print "new mu_max=", mu_max
-            # end if
-
-        if mu_max < eps:
             print "We have a problem... mu_max < eps, mu_max =", mu_max
             exit()
 
@@ -541,10 +533,23 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
         print "Iteration", k, ": Obj=", obj, ", mu_max = ", mu_max, ", mu=", mu, ", sum(x)=", sum(xk), ", maxres=",maxres, ", constraints=", len(active_constraints), "new=", newconstraints
 
 
-        if abs(lastobj-obj) < goal_acc:
-            print "STOP Condition: Relative change < ", goal_acc, ", stopping..."
-            stop_condition = 2
-            break
+        if abs(lastobj-obj) < goal_acc and not newconstraints:
+            # get some debug output
+            print "DEBUG: relative change < eps, checking some things for future reference..."
+            # lagrange multipliers
+            u = -lin.inv(MT.dot(M)).dot(MT).dot(gradf(xk))
+            print "Lagrange: min(u)=", min(u), "max(u)=", max(u)
+
+            active_x = np.sum(A[active_constraints,:],axis=0)
+            real_active_x = (active_x != 0)
+
+            if n == sum(real_active_x): # no variables can be increased, we have found a (local) optimum
+                print "STOP Condition: Relative change < ", goal_acc, ", stopping..."
+                stop_condition = 2
+                break
+            else:
+                print "We think that we can still improve ", n - sum(real_active_x), " variables, continuing..."
+            # end
 
         if obj > lastobj:
             print "STOP Condition: Objective is becoming less good.... please check!"
