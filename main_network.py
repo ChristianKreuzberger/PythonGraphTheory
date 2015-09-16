@@ -184,7 +184,7 @@ for rk in range(minval, maxval):
         res = {}
 
         print "RESULTS FOR RANDOM SEED rk=" + str(rk)
-        print ",".join(["Name", "Number", "Log(flows)","Diff(Log(bestflow))", "Sum(flows)","Diff(Sum(bestflow))", "Time used","Total time used","Residuals","NumIterations"])
+        print ",".join(["Name", "Number", "Log(flows)","Diff(Log(bestflow))", "Sum(flows)","Diff(Sum(bestflow))", "Time used","Total time used","Residuals","NumIterations", "StopCondition"])
 
         max_sum_value = 0.0
         max_sum_i = 0
@@ -212,11 +212,11 @@ for rk in range(minval, maxval):
         for i in range(0, flowcnt):
             if i in initial_flows or 'initial_alg' not in flows[i]:
                 print ",".join(map(str,[flows[i]['name'], i, flows[i]['logsum'], max_log_sum_value-flows[i]['logsum'],\
-                    flows[i]['sum'], max_sum_value - flows[i]['sum'], runtimes[i], runtimes[i], max(flows[i]['res']), flows[i]['k']]))
+                    flows[i]['sum'], max_sum_value - flows[i]['sum'], runtimes[i], runtimes[i], max(flows[i]['res']), flows[i]['k'], -1]))
             else:
                 print ",".join(map(str,[flows[i]['name'] + " using " + flows[i]['initial_alg'], i, flows[i]['logsum'], max_log_sum_value-flows[i]['logsum'],\
                     flows[i]['sum'], max_sum_value - flows[i]['sum'], runtimes[i], \
-                    runtimes[i]+runtimes[flows[i]['initial_alg_idx']], max(flows[i]['res']), flows[i]['k']]))
+                    runtimes[i]+runtimes[flows[i]['initial_alg_idx']], max(flows[i]['res']), flows[i]['k'], flows[i]['stop']]))
 
 
         for i in range(0, flowcnt):

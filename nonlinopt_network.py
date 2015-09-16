@@ -488,7 +488,6 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
             if not max(r) > 0:
                 print "STOP Condition: no more improvement possible!..."
                 stop_condition = 6
-                exit()
                 break
             else:
                 # normalize r
@@ -497,9 +496,7 @@ def nlp_optimize_network(A,C,x0,f,gradf,max_iterations=1000,line_search=linear_d
                 # calculate new mu_max
                 mu_max = get_max_feasible_mu(A,C,xk,r,residuals, eps)
                 print "new mu_max=", mu_max
-            #stop_condition = 6
-            #break
-
+            # end if
 
         if mu_max < eps:
             print "We have a problem... mu_max < eps, mu_max =", mu_max
